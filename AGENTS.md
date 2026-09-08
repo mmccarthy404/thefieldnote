@@ -126,52 +126,34 @@ too — ask before doing so, don't decide unilaterally.
 `.github/workflows/deploy.yml` is the source of truth — read the file rather
 than a copy kept here. The decisions it encodes:
 
-- Every run is `npm ci` → `npm run check` (`astro check`) → `npm run build`.
-  `npm ci` installs from the lockfile only — never `npm install` in CI, which
+- `npm ci` → `npm run check` → `npm run build`. Never `npm install` in CI: it
   resolves new versions silently and makes builds unreproducible.
-- Builds on push to `main` and deploys via `cloudflare/wrangler-action`.
-  PRs build but never deploy — that is the `if: github.ref` guard on the
-  deploy step, not a separate workflow.
-- Actions are pinned to commit SHAs, with the version in a trailing comment.
-  Tags are mutable and can be repointed at hostile code; since Cloudflare has
-  no OIDC, a long-lived API token is always in scope in this job. Never
-  "tidy" a pin back to a tag. `.github/dependabot.yml` bumps them weekly,
-  which is what keeps pinning maintainable rather than rotting.
-- `concurrency` supersedes an in-flight run for the same ref, except on
-  `main` — cancelling a deploy part-way could leave the Worker serving a
-  half-uploaded asset set.
-- Both credentials are stored as GitHub **secrets** (`gh secret list` shows
-  `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; `gh variable list` is
-  empty), so both use the `secrets.` prefix. Using `vars.` for the account ID
-  yields an empty value and a confusing auth error.
-- `paths-ignore` on the `push` trigger skips runs for docs and editor config.
-  Keep it an explicit list: a blanket `'**.md'` would match blog posts under
-  `src/content/` and silently skip the deploy that publishes them. Never add
-  the workflow file itself, or a fix to it can never run. It is deliberately
-  not set on `pull_request` — PR builds are cheap insurance, and a filtered
-  trigger would stall any PR that ever required this check.
-- `permissions: contents: read` — the job needs no write scope.
-- Node 22 with `cache: npm`, and `timeout-minutes` so a hung job cannot burn
-  runner hours.
+- PRs build; only `main` deploys, via the `if: github.ref` guard on the deploy
+  step rather than a second workflow.
+- Both credentials are GitHub **secrets**, so both use the `secrets.` prefix.
+  `vars.` yields an empty value and a confusing auth error.
+- Actions are pinned to commit SHAs, version in a trailing comment. Tags are
+  mutable, and Cloudflare has no OIDC, so a long-lived token is always in
+  scope here. Never tidy a pin back to a tag — `.github/dependabot.yml` bumps
+  them weekly, which is what keeps pinning maintainable.
+- `concurrency` supersedes in-flight runs, except on `main`, where cancelling
+  part-way could leave the Worker serving a half-uploaded asset set.
+- Every push builds. There is no `paths-ignore`: it saved about a minute on
+  doc-only pushes and cost a silent failure mode, since a plausible-looking
+  `'**.md'` matches blog posts and stops publishing them.
+- `permissions: contents: read`, Node 22 with `cache: npm`, `timeout-minutes`.
 
-`.github/workflows/security.yml` runs gitleaks on every PR and every push to
-`main`. It is a separate file on purpose:
+`.github/workflows/security.yml` runs gitleaks on every PR and push to `main`:
 
-- It has **no `paths-ignore`**. That filter answers "can this change the built
-  site?", which is the wrong question for a secret — a token pasted into
-  `AGENTS.md` changes no pixel and must still be caught. Never copy the
-  deploy filter here.
 - GitHub push protection already blocks known vendor tokens server-side, free
-  and unskippable. gitleaks covers what it misses: generic credentials — a
-  JDBC string with an embedded password, basic-auth in a URL, `password=` in
-  a config snippet. Those are plausible in posts about data infrastructure.
-- It catches a leak **before merge, not before push**. On a public repo a
-  secret pushed to any branch is already public, so a failure here means
-  *rotate that credential*, not merely *fix the diff*.
-- **No scanner reads images.** Not gitleaks, not GitHub, not TruffleHog — they
-  all scan text, and a screenshot is opaque binary. A token visible in a
-  terminal capture or a Databricks UI screenshot is caught only by a human
-  looking at the image diff in the PR. That is part of why PRs are required.
+  and unskippable. gitleaks covers what it misses — generic credentials like a
+  JDBC string with an embedded password, plausible in posts about data
+  infrastructure.
+- It catches a leak before **merge**, not before **push**. On a public repo a
+  secret pushed to any branch is already public, so a failure means *rotate
+  that credential*, not merely *fix the diff*.
+- **No scanner reads images.** A token visible in a screenshot is caught only
+  by a human reading the image diff in a PR. Part of why PRs are required.
 
 `.gitignore` must cover `node_modules/`, `dist/`, `.astro/`, `.wrangler/`, and
 Claude Code's local state. `wrangler.jsonc`, `AGENTS.md`, and `CLAUDE.md` are
@@ -235,38 +217,35 @@ above is a real Astro 7 feature that looks invented if you only recall Astro 5.
 
 ---
 
-## Astro documentation
-
-Full documentation: https://docs.astro.build — read it against the Hard
-constraints above. The official guides assume options this project has ruled
-out, so relevance varies:
-
-| Guide | Relevance |
-|---|---|
-| [Content collections](https://docs.astro.build/en/guides/content-collections/) | Primary |
-| [Astro components](https://docs.astro.build/en/basics/astro-components/) | Primary |
-| [Styling](https://docs.astro.build/en/guides/styling/) | Reference |
-| [Routing](https://docs.astro.build/en/guides/routing/) | Reference |
-| [Framework components](https://docs.astro.build/en/guides/framework-components/) | Reference |
-| [Internationalization](https://docs.astro.build/en/guides/internationalization/) | Not applicable |
-
----
-
 ## Current status
 
 Update this section as work lands.
 
-**Done:** Astro scaffolded from the official blog template. Adapter removed and
-all wizard residue cleaned up (`public/.assetsignore` deleted, `tsconfig.json`
-reverted, `package.json` scripts restored). Assets-only Worker deployed.
-Cloudflare API token created. GitHub repo public, `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` stored as repository secrets, code pushed.
+**Infrastructure is done and verified.** Astro scaffolded from the official
+blog template, adapter removed, wizard residue cleaned up, assets-only Worker
+deployed. The loop is proven end to end: PR → `build-deploy` + `gitleaks` →
+squash-merge → deploy → live at the workers.dev URL.
 
-CI works and the deploy loop is verified end to end: push to `main` → Actions
-build → `wrangler-action` deploy → change live at the workers.dev URL.
+- Ruleset on `main` requires a PR with both checks green (constraint 11).
+- Cloudflare token is scoped to `Workers Scripts:Edit` and
+  `Account Settings:Read` only. It deliberately cannot create Pages projects,
+  KV namespaces, Workers Builds, or observability — constraints 1, 2 and 3 are
+  enforced by the credential, not just written down here.
+- Dependabot runs weekly for npm and github-actions. Secret scanning, push
+  protection and Dependabot alerts are on.
 
-**Not started:** everything in the roadmap below. The site is still Astro's
-default sample template.
+**Nothing in `src/` has been touched.** The site is still Astro's sample
+template: placeholder posts (`first-post.md`, `second-post.md`,
+`third-post.md`, `markdown-style-guide.md`, `using-mdx.mdx`), placeholder hero
+images, and Astro's default styling. Deleting that sample content is part of
+the design work, not a prerequisite to it.
+
+**Next: design and layout** — see Open questions. It is the largest remaining
+piece and is to be explored interactively; bring options, do not execute a
+spec. Settle body typography first, since it churns every page if changed
+later. Roadmap items 1 and 3 (collection schema, syntax highlighting) are
+shaped by those decisions, so fold them into that conversation rather than
+doing them first.
 
 ---
 
