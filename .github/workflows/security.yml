@@ -1,0 +1,39 @@
+name: Security
+
+# Deliberately separate from deploy.yml, and deliberately without its
+# paths-ignore. That filter answers "can this change the built site?" — the
+# wrong question here. A token pasted into AGENTS.md or README.md changes no
+# pixel and must still be caught.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # fetch-depth: 0 gives gitleaks the full history to scan. deploy.yml
+      # stays shallow, so the build is not slowed by this.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Covers the gap GitHub's free tier leaves: push protection blocks known
+      # vendor tokens, but not generic credentials — a JDBC string with an
+      # embedded password, a basic-auth URL, `password=` in a config snippet.
+      # Those are plausible in posts about data infrastructure.
+      #
+      # No licence key needed: gitleaks-action is free for personal accounts
+      # and only organisations require one.
+      #
+      # Note this catches a leak *before merge*, not before push. On a public
+      # repo a secret pushed to any branch is already exposed, so treat a
+      # failure here as "rotate that credential now", not just "fix the diff".
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
