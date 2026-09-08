@@ -83,7 +83,13 @@ firsthand. If a task seems to require breaking one, stop and ask.
     and base URL live in `src/consts.ts`. The header, `<title>`, meta
     description, OpenGraph tags, and RSS channel metadata all read from it.
     Never hardcode these strings into components.
-11. **Edit `AGENTS.md`, never `CLAUDE.md`.** `AGENTS.md` is the real file and
+11. **Never push to `main`.** A ruleset requires a pull request with the build
+    check passing. Branch, open a PR, let CI go green, then squash-merge. The
+    repo admin can bypass the ruleset; that exists for a genuine emergency,
+    not as the normal path, and never for an agent. CI cannot gate a direct
+    push — a push is what triggers CI — so the PR is the only thing standing
+    between a broken build and the live site.
+12. **Edit `AGENTS.md`, never `CLAUDE.md`.** `AGENTS.md` is the real file and
     `CLAUDE.md` is a symlink to it, matching the Astro scaffold's original
     arrangement: the vendor-neutral name holds the content, the tool-specific
     alias points at it. An atomic save — write a temp file, then rename over
@@ -119,9 +125,20 @@ too — ask before doing so, don't decide unilaterally.
 `.github/workflows/deploy.yml` is the source of truth — read the file rather
 than a copy kept here. The decisions it encodes:
 
-- Builds on push to `main` and deploys via `cloudflare/wrangler-action@v4`.
+- Every run is `npm ci` → `npm run check` (`astro check`) → `npm run build`.
+  `npm ci` installs from the lockfile only — never `npm install` in CI, which
+  resolves new versions silently and makes builds unreproducible.
+- Builds on push to `main` and deploys via `cloudflare/wrangler-action`.
   PRs build but never deploy — that is the `if: github.ref` guard on the
   deploy step, not a separate workflow.
+- Actions are pinned to commit SHAs, with the version in a trailing comment.
+  Tags are mutable and can be repointed at hostile code; since Cloudflare has
+  no OIDC, a long-lived API token is always in scope in this job. Never
+  "tidy" a pin back to a tag. `.github/dependabot.yml` bumps them weekly,
+  which is what keeps pinning maintainable rather than rotting.
+- `concurrency` supersedes an in-flight run for the same ref, except on
+  `main` — cancelling a deploy part-way could leave the Worker serving a
+  half-uploaded asset set.
 - Both credentials are stored as GitHub **secrets** (`gh secret list` shows
   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; `gh variable list` is
   empty), so both use the `secrets.` prefix. Using `vars.` for the account ID
@@ -133,7 +150,8 @@ than a copy kept here. The decisions it encodes:
   not set on `pull_request` — PR builds are cheap insurance, and a filtered
   trigger would stall any PR that ever required this check.
 - `permissions: contents: read` — the job needs no write scope.
-- Node 22 with `cache: npm`.
+- Node 22 with `cache: npm`, and `timeout-minutes` so a hung job cannot burn
+  runner hours.
 
 `.gitignore` must cover `node_modules/`, `dist/`, `.astro/`, `.wrangler/`, and
 Claude Code's local state. `wrangler.jsonc`, `AGENTS.md`, and `CLAUDE.md` are

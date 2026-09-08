@@ -18,23 +18,42 @@ on:
 permissions:
   contents: read
 
+# Supersede an in-flight run for the same ref, except on main: cancelling a
+# deploy part-way could leave the Worker serving a half-uploaded asset set.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      # Actions are pinned to commit SHAs rather than tags. A tag is mutable and
+      # can be repointed at attacker-controlled code, which is how the
+      # tj-actions/changed-files compromise exfiltrated secrets in March 2025.
+      # There is no OIDC for Cloudflare, so CLOUDFLARE_API_TOKEN is a long-lived
+      # credential in scope here — pinning is the mitigation. Dependabot
+      # (.github/dependabot.yml) keeps the pins current.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
 
-      - run: npm ci
-      - run: npm run build
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Build
+        run: npm run build
 
       - name: Deploy to Cloudflare
         if: github.ref == 'refs/heads/main'
-        uses: cloudflare/wrangler-action@v4
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
