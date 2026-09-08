@@ -1,0 +1,26 @@
+version: 2
+
+updates:
+  # Workflow actions are pinned to commit SHAs, which cannot pick up patches on
+  # their own. Without this, the pins silently rot — Dependabot is what makes
+  # SHA pinning maintainable rather than worse than tags.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'ci'
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'deps'
+    groups:
+      # Astro core and its first-party integrations move together; separate PRs
+      # for each would conflict and need manual sequencing.
+      astro:
+        patterns:
+          - 'astro'
+          - '@astrojs/*'
