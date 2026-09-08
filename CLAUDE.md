@@ -235,13 +235,15 @@ Update this section as work lands.
 **Done:** Astro scaffolded from the official blog template. Adapter removed and
 all wizard residue cleaned up (`public/.assetsignore` deleted, `tsconfig.json`
 reverted, `package.json` scripts restored). Assets-only Worker deployed.
-Cloudflare API token created. GitHub repo public, secrets/variables set, code
-pushed.
+Cloudflare API token created. GitHub repo public, `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` stored as repository secrets, code pushed.
 
-**Broken:** `.github/workflows/deploy.yml` is invalid — shell commands were
-pasted into it by mistake. Rewrite it with the correct YAML and confirm the
-Actions run goes green, then verify the loop end to end by changing a word in a
-post and pushing. *Delete this line once fixed.*
+CI works and the deploy loop is verified end to end: push to `main` → Actions
+build → `wrangler-action` deploy → change live at the workers.dev URL.
+
+`CLAUDE.md` is the real file; `AGENTS.md` is a symlink to it. The Astro scaffold
+shipped them the other way round. Edit `CLAUDE.md` — never write to `AGENTS.md`,
+since an atomic save there replaces the symlink and the two silently diverge.
 
 **Not started:** everything in the roadmap below. The site is still Astro's
 default sample template.
