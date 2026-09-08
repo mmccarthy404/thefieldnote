@@ -24,3 +24,12 @@ updates:
         patterns:
           - 'astro'
           - '@astrojs/*'
+    ignore:
+      # @astrojs/check 0.9.10 — its latest — declares
+      # peer typescript "^5.0.0 || ^6.0.0", so TypeScript 7 fails npm ci with
+      # ERESOLVE before any code runs. There is no newer @astrojs/check to
+      # pair with it, so no version combination resolves.
+      # Remove this once it supports 7:
+      #   npm view @astrojs/check@latest peerDependencies
+      - dependency-name: typescript
+        versions: ['>=7']
