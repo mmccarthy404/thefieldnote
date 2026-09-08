@@ -3,6 +3,16 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Files that cannot affect the built site. Must stay an explicit list:
+    # a blanket '**.md' would match blog posts under src/content/ and silently
+    # skip the deploy that publishes them.
+    paths-ignore:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'README.md'
+      - '.gitignore'
+      - '.vscode/**'
+      - '.claude/**'
   pull_request:
 
 permissions:

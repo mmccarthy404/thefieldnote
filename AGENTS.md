@@ -83,6 +83,14 @@ firsthand. If a task seems to require breaking one, stop and ask.
     and base URL live in `src/consts.ts`. The header, `<title>`, meta
     description, OpenGraph tags, and RSS channel metadata all read from it.
     Never hardcode these strings into components.
+11. **Edit `AGENTS.md`, never `CLAUDE.md`.** `AGENTS.md` is the real file and
+    `CLAUDE.md` is a symlink to it, matching the Astro scaffold's original
+    arrangement: the vendor-neutral name holds the content, the tool-specific
+    alias points at it. An atomic save — write a temp file, then rename over
+    the path — replaces a symlink rather than following it, so writing to
+    `CLAUDE.md` breaks the link and leaves two files that silently drift. This
+    has already happened once, in the opposite direction, and surfaced only as
+    a cryptic `typechange` in `git status`.
 
 ---
 
@@ -108,46 +116,24 @@ too — ask before doing so, don't decide unilaterally.
 }
 ```
 
-`.github/workflows/deploy.yml` builds on push to `main` and deploys via
-`cloudflare/wrangler-action@v4`. PRs build only. Both credentials are stored as
-GitHub **secrets** (`gh secret list` shows `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID`; `gh variable list` is empty), so both use the
-`secrets.` prefix. Using `vars.` for the account ID yields an empty value and a
-confusing auth error.
+`.github/workflows/deploy.yml` is the source of truth — read the file rather
+than a copy kept here. The decisions it encodes:
 
-```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-permissions:
-  contents: read
-
-jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-      - run: npm run build
-
-      - name: Deploy to Cloudflare
-        if: github.ref == 'refs/heads/main'
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
-```
+- Builds on push to `main` and deploys via `cloudflare/wrangler-action@v4`.
+  PRs build but never deploy — that is the `if: github.ref` guard on the
+  deploy step, not a separate workflow.
+- Both credentials are stored as GitHub **secrets** (`gh secret list` shows
+  `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; `gh variable list` is
+  empty), so both use the `secrets.` prefix. Using `vars.` for the account ID
+  yields an empty value and a confusing auth error.
+- `paths-ignore` on the `push` trigger skips runs for docs and editor config.
+  Keep it an explicit list: a blanket `'**.md'` would match blog posts under
+  `src/content/` and silently skip the deploy that publishes them. Never add
+  the workflow file itself, or a fix to it can never run. It is deliberately
+  not set on `pull_request` — PR builds are cheap insurance, and a filtered
+  trigger would stall any PR that ever required this check.
+- `permissions: contents: read` — the job needs no write scope.
+- Node 22 with `cache: npm`.
 
 `.gitignore` must cover `node_modules/`, `dist/`, `.astro/`, `.wrangler/`, and
 Claude Code's local state. `wrangler.jsonc`, `AGENTS.md`, and `CLAUDE.md` are
@@ -240,17 +226,6 @@ Cloudflare API token created. GitHub repo public, `CLOUDFLARE_API_TOKEN` and
 
 CI works and the deploy loop is verified end to end: push to `main` → Actions
 build → `wrangler-action` deploy → change live at the workers.dev URL.
-
-`AGENTS.md` is the real file; `CLAUDE.md` is a symlink to it, matching the
-Astro scaffold's original arrangement. `AGENTS.md` is the vendor-neutral name
-read by most agent tools, so it holds the content and the tool-specific alias
-points at it.
-
-**Edit `AGENTS.md`, never `CLAUDE.md`.** An atomic save — write temp file, then
-rename over the path — replaces a symlink rather than following it, so writing
-to `CLAUDE.md` silently breaks the link and leaves two files that drift. This
-already happened once, in the opposite direction, and surfaced only as a
-cryptic `typechange` in `git status`.
 
 **Not started:** everything in the roadmap below. The site is still Astro's
 default sample template.
