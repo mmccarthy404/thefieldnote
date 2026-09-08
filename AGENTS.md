@@ -83,8 +83,9 @@ firsthand. If a task seems to require breaking one, stop and ask.
     and base URL live in `src/consts.ts`. The header, `<title>`, meta
     description, OpenGraph tags, and RSS channel metadata all read from it.
     Never hardcode these strings into components.
-11. **Never push to `main`.** A ruleset requires a pull request with the build
-    check passing. Branch, open a PR, let CI go green, then squash-merge. The
+11. **Never push to `main`.** A ruleset requires a pull request with both the
+    `build-deploy` and `gitleaks` checks passing. Branch, open a PR, let CI go
+    green, then squash-merge. The
     repo admin can bypass the ruleset; that exists for a genuine emergency,
     not as the normal path, and never for an agent. CI cannot gate a direct
     push — a push is what triggers CI — so the PR is the only thing standing
@@ -152,6 +153,25 @@ than a copy kept here. The decisions it encodes:
 - `permissions: contents: read` — the job needs no write scope.
 - Node 22 with `cache: npm`, and `timeout-minutes` so a hung job cannot burn
   runner hours.
+
+`.github/workflows/security.yml` runs gitleaks on every PR and every push to
+`main`. It is a separate file on purpose:
+
+- It has **no `paths-ignore`**. That filter answers "can this change the built
+  site?", which is the wrong question for a secret — a token pasted into
+  `AGENTS.md` changes no pixel and must still be caught. Never copy the
+  deploy filter here.
+- GitHub push protection already blocks known vendor tokens server-side, free
+  and unskippable. gitleaks covers what it misses: generic credentials — a
+  JDBC string with an embedded password, basic-auth in a URL, `password=` in
+  a config snippet. Those are plausible in posts about data infrastructure.
+- It catches a leak **before merge, not before push**. On a public repo a
+  secret pushed to any branch is already public, so a failure here means
+  *rotate that credential*, not merely *fix the diff*.
+- **No scanner reads images.** Not gitleaks, not GitHub, not TruffleHog — they
+  all scan text, and a screenshot is opaque binary. A token visible in a
+  terminal capture or a Databricks UI screenshot is caught only by a human
+  looking at the image diff in the PR. That is part of why PRs are required.
 
 `.gitignore` must cover `node_modules/`, `dist/`, `.astro/`, `.wrangler/`, and
 Claude Code's local state. `wrangler.jsonc`, `AGENTS.md`, and `CLAUDE.md` are
