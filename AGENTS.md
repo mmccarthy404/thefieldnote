@@ -217,9 +217,64 @@ above is a real Astro 7 feature that looks invented if you only recall Astro 5.
 
 ---
 
-## Current status
+## Design — settled
 
-Update this section as work lands.
+Settled over four rounds of blind A/B testing against a full-length technical
+post, not chosen from a mockup. Tokens live in `src/styles/global.css`.
+
+**Type.** IBM Plex Sans for body and headings, JetBrains Mono for code. The
+scale is a major third (1.25) on a 19px body — `body 19 · h3 24 · h2 30 ·
+h1 37` — at a 72ch measure, 1.65 line height.
+
+That scale won a blind round-robin 8–0 against four alternatives, with all ten
+repeated pairs agreeing with themselves. Worth knowing why it was re-run: the
+first two rounds asked "keep this, or this larger value" one variable at a
+time, which ratchets — every step wins in isolation and nothing pushes back.
+Body drifted 18 → 19 → 20px while h1 was never asked about, ending with h3
+*smaller* than body text. Blind, whole-system, repeated comparison fixed it and
+pulled body size back down. **If more design questions come up, test them that
+way: hide the numbers, change whole systems, ask twice with the sides swapped.**
+
+**Colour.** `#169B62` is the brand green and the only colour on the site. There
+is no secondary, deliberately.
+
+It appears verbatim wherever the 4.5:1 contrast floor for small text does not
+apply — every non-text mark, and all text in dark mode, where it measures
+5.04:1. On the light paper it is 3.38:1, and no light background fixes that:
+even pure white only reaches 3.56:1. So light-mode link text uses `#00844D`,
+the same green darkened in OKLCH with hue held at 157.9° and chroma at the
+maximum renderable at that lightness — 4.53:1. One colour, rendered legibly.
+**Do not "simplify" these to a single hex.** It is not possible.
+
+Hairlines, rules and the code fill are tinted neutrals at chroma 0.005–0.020,
+roughly an eighth of the brand's saturation. They read as warm greys, not as
+green, and exist to make the palette feel like one system.
+
+**Dark mode** is built in via `light-dark()` pairs on every colour token, with
+`color-scheme` on the root deciding. There is no visible theme toggle —
+remembering a choice needs storage, which constraint 8 rules out. The
+`[data-theme]` hooks are present and cost nothing if that is ever revisited.
+
+**Syntax highlighting** is `github-light-high-contrast` / `github-dark-high-contrast`.
+Chosen by measuring common token colours against the code fill: syntax colours
+are text, so 4.5:1 applies, and most popular themes miss badly in light mode —
+Solarized bottoms out at 2.38:1, One Light 2.29:1, Catppuccin Latte 2.65:1,
+Vitesse 2.08:1. This pair reaches 4.48:1 worst case light, 8.92:1 dark. The
+light `--code-bg` is a shade lighter than first picked specifically so the
+weakest token (comments) clears 4.5:1 at 4.57:1. Astro's config schema drops
+Shiki's `colorReplacements`, so that is the only lever available.
+
+**Captions** use the plugin-free pattern: a Markdown image followed by an
+italic-only paragraph, styled via `:has()`. Astro only rewrites Markdown image
+syntax, so a raw `<figure>` would force images into `public/` and break
+colocation. MDX components are ruled out by constraint 6.
+
+**Still open, deliberately.** Line length was pinned at 72ch during the scale
+tournament so it never got its own blind test. The green code fill was chosen
+in round one at the old scale and never compared head-to-head against a neutral
+fill. Both are one-line changes and are better judged against real posts.
+
+## Current status
 
 **Infrastructure is done and verified.** Astro scaffolded from the official
 blog template, adapter removed, wizard residue cleaned up, assets-only Worker
@@ -234,43 +289,43 @@ squash-merge → deploy → live at the workers.dev URL.
 - Dependabot runs weekly for npm and github-actions. Secret scanning, push
   protection and Dependabot alerts are on.
 
-**Nothing in `src/` has been touched.** The site is still Astro's sample
-template: placeholder posts (`first-post.md`, `second-post.md`,
-`third-post.md`, `markdown-style-guide.md`, `using-mdx.mdx`), placeholder hero
-images, and Astro's default styling. Deleting that sample content is part of
-the design work, not a prerequisite to it.
+**Design is settled and built** — see Design above. Astro's sample posts,
+placeholder images and bundled Atkinson font are gone; `src/` is now the real
+site. Shipped: the collection schema with `draft`/`tags`/`canonicalUrl`, draft
+filtering that keeps drafts visible in `astro dev` and out of production
+builds, the post list as the home page, per-tag pages, an about page, a custom
+404, RSS, sitemap, `robots.txt`, and per-page canonical and OpenGraph tags.
 
-**Next: design and layout** — see Open questions. It is the largest remaining
-piece and is to be explored interactively; bring options, do not execute a
-spec. Settle body typography first, since it churns every page if changed
-later. Roadmap items 1 and 3 (collection schema, syntax highlighting) are
-shaped by those decisions, so fold them into that conversation rather than
-doing them first.
+**The site has no posts.** That is intentional — The Field Note starts empty —
+so `astro build` warns that the blog collection is empty. Expected, not a
+problem.
 
----
+**The tagline is still blank.** `SITE_TAGLINE` in `src/consts.ts` is an empty
+string and everything that reads it degrades gracefully; the header simply
+renders no tagline. Filling it in is the only change needed. Do not invent one.
+
 
 ## Roadmap
 
-1. **Content collection schema** — per the conventions above.
-2. **Design and layout** — see Open questions. This is the largest remaining
-   piece.
-3. **Syntax highlighting** — Shiki is built in. Pick a theme readable in both
-   light and dark. Expressive Code is an option if line highlighting, filename
-   tabs, or diff markers are wanted; decide before writing many posts, since it
-   changes code fence syntax.
-4. **Feeds, SEO, metadata** — RSS via `@astrojs/rss` (already installed, default
-   to full-content), sitemap, per-page OpenGraph, canonical URLs honoring the
-   `canonicalUrl` field, `robots.txt`.
-5. **OG images** — generate at build time with Satori or `astro-og-canvas`. No
-   manual image creation.
-6. **Custom 404** — `src/pages/404.astro`. `not_found_handling` is already
-   configured to serve it.
-7. **Search** — Pagefind. Build-time index, no server. Not urgent at low post
+Done: collection schema, design and layout, syntax highlighting, feeds and SEO
+(RSS, sitemap, OpenGraph, canonical URLs honouring `canonicalUrl`,
+`robots.txt`), custom 404.
+
+Remaining:
+
+1. **Full-content RSS** — the feed currently carries descriptions only.
+   Full content needs each post rendered to HTML inside the endpoint, which
+   means the container API and a sanitiser. Deferred until there are posts to
+   test it against.
+2. **OG images** — generate at build time with Satori or `astro-og-canvas`. No
+   manual image creation. `BaseHead` already emits `og:image` when a post has a
+   `heroImage`, so this slots in without restructuring.
+3. **Search** — Pagefind. Build-time index, no server. Not urgent at low post
    counts, painful to retrofit later.
-8. **Repo hygiene** — add `@astrojs/check` + `typescript` and run `astro check`
-   in CI before the build; link checker; Renovate or Dependabot. Optionally
-   per-PR preview deploys via `wrangler versions upload` (deliberately deferred).
-9. **Analytics** — Cloudflare Web Analytics. Free, cookieless, one snippet.
+4. **Repo hygiene** — link checker. `astro check` already runs in CI. Optionally
+   per-PR preview deploys via `wrangler versions upload` (deliberately
+   deferred).
+5. **Analytics** — Cloudflare Web Analytics. Free, cookieless, one snippet.
 
 **Explicitly out of scope:** migrating posts from the old `aheadinthecloud`
 site. The Field Note starts empty. Do not propose importing old content or
@@ -281,35 +336,26 @@ preserve. May be revisited later.
 
 ## Open questions — ask, do not decide
 
-**Design and layout.** The author has no design opinions yet and wants to work
-this out interactively. Bring options, show alternatives, react to feedback. Do
-not execute a spec.
-
-The only fixed facts: the current look is Astro's placeholder template, not a
-starting aesthetic to preserve; and the content is dense technical prose (code
-blocks, config snippets, tables), so readability under load matters more than
-visual novelty. Everything else is unsettled — typography, color, dark mode,
-layout width, homepage structure, how tags and archives surface.
-
-Offered as defaults to argue with, not requirements: settle body typography
-early, since font, line height, and line length are the highest-leverage choices
-for this content and churn every page if changed later; and build dark mode in
-from the start via CSS custom properties and `prefers-color-scheme`, since it's
-cheap early and annoying to retrofit.
-
-**Tailwind vs. plain CSS with custom properties.** The old site used Tailwind so
-the author knows it. Plain CSS is the lighter default. Either is fine; no heavy
-component library either way. Decide this *inside* the design exploration — the
-styling approach should follow the visual direction, not constrain it.
-
 **Tagline.** The line under "The Field Note" in the header, also the site
 description for search and social previews. Distinct from per-post
-`description`. The author expects to want one but hasn't chosen the wording, and
-it'll likely be easier to write once a few posts exist. Build so it can be
-added, changed, or omitted without rework. Do not block on it, and do not invent
-one.
+`description`. `SITE_TAGLINE` in `src/consts.ts` is an empty string; the header
+renders nothing when it is blank, so it can be added or changed at any time
+without rework. Do not block on it, and do not invent one.
+
+**Two design values left untested** — line length (pinned at 72ch during the
+scale tournament, so never blind-tested on its own) and whether the code fill
+should stay green-tinted or go neutral. Both are one-line changes in
+`global.css`, and both are better judged against real posts than in another
+round of comparisons. Raise them once a few posts exist; do not change either
+unilaterally.
+
+**Styling approach — decided.** Plain CSS with custom properties, no Tailwind
+and no component library. One stylesheet, `src/styles/global.css`, driven
+entirely by tokens. This followed from the visual direction rather than
+constraining it, which was the intent.
 
 ---
+
 
 ## Domain cutover — author-driven, do not attempt
 

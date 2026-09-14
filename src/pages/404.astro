@@ -1,0 +1,29 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title="Not found" description="That page does not exist." />
+	</head>
+	<body>
+		<a class="skip-link" href="#content">Skip to content</a>
+		<Header />
+		<main id="content">
+			<article class="prose">
+				<div class="post-head">
+					<p class="post-meta">404</p>
+					<h1>That page doesn’t exist</h1>
+					<p class="post-dek">
+						The link may be wrong, or the post may have moved. <a href="/">All posts</a> is
+						probably where you want to be.
+					</p>
+				</div>
+			</article>
+		</main>
+		<Footer />
+	</body>
+</html>
