@@ -82,7 +82,8 @@ firsthand. If a task seems to require breaking one, stop and ask.
 10. **Single source of truth for site metadata.** Site title, tagline, author,
     and base URL live in `src/consts.ts`. The header, `<title>`, meta
     description, OpenGraph tags, and RSS channel metadata all read from it.
-    Never hardcode these strings into components.
+    Never hardcode these strings into components. The favicon is not among
+    them: it is an asset, `public/favicon.svg`, referenced once by `BaseHead`.
 11. **Never push to `main`.** A ruleset requires a pull request with both the
     `build-deploy` and `gitleaks` checks passing. Branch, open a PR, let CI go
     green, then squash-merge. The
@@ -296,6 +297,25 @@ filtering that keeps drafts visible in `astro dev` and out of production
 builds, the post list as the home page, per-tag pages, an about page, a custom
 404, RSS, sitemap, `robots.txt`, and per-page canonical and OpenGraph tags.
 
+**The favicon is Lucide's `clipboard-pen`**, recoloured to `#169B62` and
+committed as `public/favicon.svg`, with `public/favicon.ico` (16/32/48px)
+generated from it as the fallback. `BaseHead` declares both. Astro's bundled
+logo is gone.
+
+Lucide is ISC-licensed, so no attribution is required in the rendered page; the
+provenance is recorded in a comment inside the SVG. Stock 2px stroke, not the
+2.5px variant — both were rendered at 16/32/48px and bold was no cleaner.
+
+Single colour, no `prefers-color-scheme` variant: it is a non-text mark, so the
+4.5:1 floor does not apply and `#169B62` is legible on both a light and a dark
+tab strip. Known trade-off: Lucide leaves the board's right edge open where the
+pen crosses it, which reads as depth at 32px and as an unclosed rectangle at
+1x 16px. Accepted deliberately.
+
+Regenerate the `.ico` after any change to the SVG. `sharp` is already a
+dependency and emits PNGs; the ICO container is a 6-byte header plus one 16-byte
+directory entry per image, then the PNG payloads.
+
 **The site has no posts.** That is intentional — The Field Note starts empty —
 so `astro build` warns that the blog collection is empty. Expected, not a
 problem.
@@ -313,19 +333,25 @@ Done: collection schema, design and layout, syntax highlighting, feeds and SEO
 
 Remaining:
 
-1. **Full-content RSS** — the feed currently carries descriptions only.
-   Full content needs each post rendered to HTML inside the endpoint, which
-   means the container API and a sanitiser. Deferred until there are posts to
-   test it against.
-2. **OG images** — generate at build time with Satori or `astro-og-canvas`. No
+1. **OG images** — generate at build time with Satori or `astro-og-canvas`. No
    manual image creation. `BaseHead` already emits `og:image` when a post has a
    `heroImage`, so this slots in without restructuring.
-3. **Search** — Pagefind. Build-time index, no server. Not urgent at low post
+2. **Search** — Pagefind. Build-time index, no server. Not urgent at low post
    counts, painful to retrofit later.
-4. **Repo hygiene** — link checker. `astro check` already runs in CI. Optionally
+3. **Repo hygiene** — link checker. `astro check` already runs in CI. Optionally
    per-PR preview deploys via `wrangler versions upload` (deliberately
    deferred).
-5. **Analytics** — Cloudflare Web Analytics. Free, cookieless, one snippet.
+4. **Analytics** — Cloudflare Web Analytics. Free, cookieless, one snippet.
+
+**Cut, not deferred:** full-content RSS. The feed carries descriptions only
+and stays that way — rendering every post to HTML inside the endpoint needs the
+container API and a sanitiser, which is real machinery for a nicety.
+
+**RSS has no visible link.** The feed is discoverable only through the
+`<link rel="alternate">` tag in `BaseHead`, which is what feed readers actually
+use. A naked link to raw XML reads as a broken page to anyone who does not
+already know what a feed is. If it is ever surfaced again, style the feed with
+XSLT or link to an explainer page — do not point a nav item at `rss.xml`.
 
 **Explicitly out of scope:** migrating posts from the old `aheadinthecloud`
 site. The Field Note starts empty. Do not propose importing old content or
