@@ -57,10 +57,11 @@ Fenced blocks take a language for syntax highlighting:
 
 ```python
 def ingest(catalog: str, schema: str) -> None:
-    """Keep lines to about 72 characters.
+    """Keep code lines to 80 characters or fewer.
 
-    The block is ~76 characters wide before it scrolls
-    horizontally, and narrower on a phone.
+    The block holds 81 before it scrolls horizontally, and
+    `npm run check` fails the build on anything longer. On a
+    phone the column is narrower and will scroll regardless.
     """
     spark.sql(f"USE CATALOG {catalog}")
 ```
@@ -73,6 +74,10 @@ WHERE  catalog_name = 'main';
 ```
 
 Always label the language. An unlabelled block renders as plain text.
+
+Lines over 80 characters fail `npm run check`, so an over-long snippet is
+caught before it reaches a pull request. Reformat rather than trim meaning —
+`black -l 80` for Python. Note Black's own default is 88, which does not fit.
 
 ## Images
 

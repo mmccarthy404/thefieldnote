@@ -33,7 +33,17 @@
 	--weight-head: 700;
 	--h2-top: 2.4em;
 
-	--size-code: 1rem; /* 16px */
+	/* 15px, not 16. The blind round picked 16px against a 20px body — ratio
+	   0.80 — and the body later came down to 19px in the scale tournament
+	   without code following, leaving it at 0.84. 15px restores 0.79, within
+	   0.011 of the tested proportion.
+
+	   It is also what makes an 80-character line fit. Both IBM Plex Sans and
+	   JetBrains Mono advance "0" at exactly 0.600em, so the 72ch measure is
+	   820.8px; less 40px of .prose padding and 48px of pre padding leaves
+	   732.8px, which is 81.4 monospace characters at 15px (76.3 at 16px).
+	   `npm run check` fails any code block over 80. */
+	--size-code: 0.9375rem; /* 15px */
 	--lh-code: 1.75;
 	--radius: 8px;
 
