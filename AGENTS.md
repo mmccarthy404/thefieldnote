@@ -229,9 +229,10 @@ lowercase identifiers, which a blog about data tooling hits constantly.
 **Never write an `h1` in a post body.** It is generated from `title`. Bodies
 run `h2` and `h3`; below `h3` the scale stops signalling hierarchy.
 
-**Keep code lines to about 72 characters.** Blocks are roughly 76 characters
-wide before they scroll horizontally, and narrower on a phone. Always label the
-fence language; an unlabelled block renders as plain text.
+**Keep code lines to 80 characters or fewer.** Blocks hold 81 at the current
+15px code size, and `npm run check` fails the build on anything longer — see
+Code width under Open questions for the derivation. Always label the fence
+language; an unlabelled block renders as plain text.
 
 Filter `draft: true` out of the blog index, RSS, and sitemap in production while
 keeping drafts visible in `astro dev`.
@@ -497,19 +498,38 @@ an empty description. They are independent now. Both are the author's words;
 **never draft either** (constraint 13). Blank is safe: `BaseHead` omits the
 description tags entirely rather than emitting empty ones.
 
-**NEXT SESSION — 80-character code blocks without a scrollbar.** Code blocks
-currently fit about 76 characters before scrolling horizontally, and 80 is the
-conventional line limit (PEP 8 says 79, Prettier 80; note Black defaults to
-88). Reaching 80 needs roughly 35px more inner width. Options already costed:
-let `pre` break out wider than the 72ch prose measure using negative inline
-margins — the standard approach and the only one that takes nothing from prose
-or code; trim `pre` padding from 1.5rem, which recovers ~19px and is not enough
-alone; drop `--size-code` from 16px to 15px, which works but shrinks code on a
-blog where code is the point; or widen the measure, which is already at the top
-of the readable range and is itself an untested value. **The author wants this
-solved next session.** Decide the target first — 80, or Black's 88 — because
-88 stops being a squeeze and becomes a question about how wide a code block
-should be relative to the page.
+**Code width — settled.** Code is 15px and lines are capped at 80
+characters, enforced by `scripts/check-code-width.mjs` in `npm run check`.
+
+The numbers, so they are not re-derived by guesswork: IBM Plex Sans and
+JetBrains Mono both advance `"0"` at exactly **0.600em**, measured out of the
+font's `hmtx` table rather than assumed. So 72ch at 19px is 820.8px; less 40px
+of `.prose` padding and 48px of `pre` padding leaves 732.8px, which is **81.4
+characters at 15px** and 76.3 at 16px. An earlier session recorded the measure
+as "about 750px" — that was an estimate and it is wrong.
+
+Why 15px rather than a layout change: the blind round picked 16px against a
+**20px** body (ratio 0.80), the body later dropped to 19px without code
+following (0.84), and 15px restores **0.79** — closer to the tested proportion
+than the shipped site was. It touches one token and leaves the measure, inline
+code, padding and layout alone.
+
+Why 80 and not Black's 88: 88 needs code at ~13.8px, which is below the tested
+ratio. It is also a formatter-internal optimisation — Black's docs say it was
+chosen as "10% over 80" because it "produced significantly shorter files" — not
+a readability finding, and it is Python-only while these posts carry SQL, bash,
+JSON and YAML. 80 is Prettier's default and one over PEP 8's 79.
+
+Why scroll rather than wrap: wrapping restarts a line at column zero, which
+destroys indentation — syntax, in Python. With the limit enforced, desktop
+never scrolls anyway; the scrollbar only appears on a phone, where the column
+is narrower than any limit can account for and a horizontal swipe is the
+expected affordance. Databricks wraps (`white-space: pre-wrap`, code at 14px on
+a 20px body); Cloudflare scrolls at 14px. Neither widens the block beyond the
+prose column, and neither did we.
+
+If the type scale, the measure or the block padding ever change, recompute the
+capacity and `MAX_CHARS` together — they are one decision.
 
 **Two design values left untested** — line length (pinned at 72ch during the
 scale tournament, so never blind-tested on its own) and whether the code fill
