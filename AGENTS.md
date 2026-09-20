@@ -99,6 +99,31 @@ firsthand. If a task seems to require breaking one, stop and ask.
     `CLAUDE.md` breaks the link and leaves two files that silently drift. This
     has already happened once, in the opposite direction, and surfaced only as
     a cryptic `typechange` in `git status`.
+13. **No LLM-written site content.** The about page states that everything on
+    this site is written by hand, without LLMs. That claim is load-bearing and
+    a reader can check it, so it constrains the agent as much as the author.
+
+    **In scope — every word a visitor reads:** post bodies and titles, page
+    bodies, frontmatter `title` and `description`, `SITE_TAGLINE`,
+    `SITE_DESCRIPTION`, and any interface string that carries a voice rather
+    than being a plain label. Do not draft it, ghost-write it, "polish" it or
+    paste it in, and do not offer to. Asked for wording, decline and offer
+    review instead.
+
+    **Out of scope:** code, components, layouts, config, this file, commit
+    messages and PR descriptions. Those are not content on the site. Plain
+    functional labels — "Skip to content", "Posts", "About", "Draft" — are
+    interface furniture, not voice.
+
+    **Reviewing is encouraged, and is the useful role.** Flag typos, grammar,
+    comma splices, repetition, filler, character counts, truncation points,
+    and sentences that are not doing their job. Say plainly when something
+    reads weakly. An illustrative example may be given in chat when asked
+    for one, clearly marked as illustration — never written into a file.
+
+    **Hold the author to it.** Before any pull request that touches content,
+    check that no agent-written prose is shipping and say so if it is. The
+    claim is only worth making while it is true.
 
 ---
 
@@ -191,11 +216,69 @@ canonicalUrl:  # optional — for posts cross-posted elsewhere
 Do **not** add an issue or series number field. Numbered posts were considered
 and rejected.
 
+**Start from `src/content/blog/example/`.** It is a permanently-drafted
+reference post carrying every frontmatter field, all the Markdown this site
+styles, and the conventions below. Copy the folder, rename it, replace the
+text, delete `draft: true`. Keep it drafted and do not copy its prose into a
+real post — its wording is instructional, not voice (constraint 13).
+
+**Titles use sentence case.** Proper nouns and code identifiers keep their own
+casing — Databricks, Delta Lake, `spark.conf`. Title Case collides with
+lowercase identifiers, which a blog about data tooling hits constantly.
+
+**Never write an `h1` in a post body.** It is generated from `title`. Bodies
+run `h2` and `h3`; below `h3` the scale stops signalling hierarchy.
+
+**Keep code lines to about 72 characters.** Blocks are roughly 76 characters
+wide before they scroll horizontally, and narrower on a phone. Always label the
+fence language; an unlabelled block renders as plain text.
+
 Filter `draft: true` out of the blog index, RSS, and sitemap in production while
 keeping drafts visible in `astro dev`.
 
-Colocate post images with the post and reference them relatively, so content
-moves as a unit.
+**Draft filtering is easy to break.** Every route that enumerates posts must go
+through `getPublishedPosts()` in `src/lib/posts.ts`. Calling `getCollection('blog')`
+directly in a `getStaticPaths()` builds a route for every draft, giving it a
+live URL and listing it in the sitemap — the index and RSS still hide it, so it
+looks hidden while being fully public. This shipped undetected for weeks
+because the site had no posts to expose it.
+
+**Colocate post images with the post** and reference them relatively, so content
+moves as a unit. A post with images lives in a folder as `index.md`; the folder
+name becomes the URL, so `blog/my-post/index.md` serves at `/blog/my-post/`. A
+post with no images can stay a flat `.md` file. This is not only tidiness:
+images under `src/` go through Astro's pipeline and get WebP conversion,
+responsive `srcset`, intrinsic width/height and lazy loading. A 5.8KB test PNG
+was served at 632 bytes. Files in `public/` are copied verbatim and get none of
+it.
+
+## Page format — `.md` or `.astro`
+
+- **`.md` in `src/pages/`** for standalone prose with a `layout:` pointing at
+  `src/layouts/Page.astro` — currently `about.md` and `404.md`. Astro's docs
+  endorse this for one-off pages and steer collections toward "directories of
+  related Markdown files that share a similar structure".
+- **A content collection** for files sharing a schema — the blog.
+- **`.astro`** for anything that generates pages from data: `index.astro`,
+  `tags/[tag].astro`, `blog/[...slug].astro`. A dynamic route cannot be
+  Markdown.
+
+Two things depend on this and are easy to break:
+
+- The `layout:` frontmatter property means **Astro stops injecting
+  `<meta charset="utf-8">`**. `BaseHead` emits it explicitly; removing that
+  line silently breaks the Markdown pages while leaving the `.astro` ones fine.
+- `src/pages/*.md` gets **no schema validation**. A mistyped frontmatter key
+  fails silently rather than erroring. Acceptable at two pages; if standalone
+  pages reach five or six, move them into their own collection with a schema.
+
+**Redirects belong in `public/_redirects`, not in a page.** Cloudflare's
+static-asset runtime parses that file and issues real HTTP 301s; the file is
+never served as an asset. `/blog` redirects there, replacing a
+`<meta http-equiv="refresh">` page — a meta refresh returns HTTP 200 and asks
+the browser to bounce, which is slower and a weaker signal to crawlers. Note
+`astro dev` does not honour `_redirects`, so redirected paths 404 locally and
+work in production.
 
 ---
 
@@ -239,17 +322,53 @@ way: hide the numbers, change whole systems, ask twice with the sides swapped.**
 **Colour.** `#169B62` is the brand green and the only colour on the site. There
 is no secondary, deliberately.
 
-It appears verbatim wherever the 4.5:1 contrast floor for small text does not
-apply — every non-text mark, and all text in dark mode, where it measures
-5.04:1. On the light paper it is 3.38:1, and no light background fixes that:
-even pure white only reaches 3.56:1. So light-mode link text uses `#00844D`,
-the same green darkened in OKLCH with hue held at 157.9° and chroma at the
-maximum renderable at that lightness — 4.53:1. One colour, rendered legibly.
-**Do not "simplify" these to a single hex.** It is not possible.
+It appears verbatim only where the 4.5:1 floor for small text does not apply:
+`--brand` is now used for the `::selection` fill and the favicon, nothing else.
+All coloured **text** uses `--accent`, `light-dark(#007f4e, #169b62)`.
 
-Hairlines, rules and the code fill are tinted neutrals at chroma 0.005–0.020,
-roughly an eighth of the brand's saturation. They read as warm greys, not as
-green, and exist to make the palette feel like one system.
+**One hex cannot serve both modes.** This was re-derived numerically and is
+arithmetic, not preference. `#169B62` has luminance 0.245; a colour passing
+4.5:1 against both the light and dark papers would need luminance ≤0.172 and
+≥0.213 at once. No colour of any hue can. Even pure white and pure black do not
+admit one. **Do not try to "simplify" the pair.**
+
+There is one legitimate route to the raw hex in light mode, unused so far:
+WCAG's large-text floor is 3:1 at 24px+, and `#169B62` on the paper is 3.38:1.
+The scale runs h1 37 / h2 30 / h3 24, so **the brand hex is already legal on
+every heading in light mode**. `h4` at 18px is not eligible.
+
+Every neutral sits on the brand hue (157.9° nominal) with chroma scaled down —
+roughly an eighth for marks that carry weight, a twentieth for fills. Paper and
+ink were moved onto that hue too: they previously sat at 91° and 258°, so the
+site changed temperature between light and dark. Lightness was held, so
+contrast did not move. Note the swap is **below the just-noticeable threshold**
+(ΔE 0.004–0.010 in OKLab) — it buys a rule with no exception, not a visible
+change. If a genuinely warm paper is ever wanted, it needs roughly three times
+the chroma, around `#faf6ef`, and that is a real aesthetic decision.
+
+Below about chroma 0.010 the hue is bookkeeping: one 8-bit step swings it by
+tens of degrees, which is why some tokens read 152–165° rather than 157.9°.
+
+**`::selection` pins `color`, not just a background.** The tint alone drops
+everything but body text under 4.5:1 while selected — links to 3.52, `--muted`
+to 3.81, code comments to 3.72. That is not fixable by picking a different
+tint: the paper is already near the top of the luminance scale, so any visible
+highlight of any hue does it. Setting `color: var(--fg)` forces selected runs
+to 11.92:1. Cost: selected code loses its syntax colours while selected.
+
+**Interactive elements follow two rules, no exceptions.** Links that must
+identify themselves inside running text — `.prose a` only — carry colour *and*
+an underline at rest, and thicken the underline on hover; colour alone would
+fail colour-blind readers and hover does not exist on touch. Links whose
+clickability is obvious from position — nav, footer, post-list titles and post
+tags — are `--muted` at rest and take `--accent` on hover, nothing else.
+
+Post tags render as `#tag`, with the hash generated by CSS `::before` rather
+than stored, so the tag string stays clean for the URL, the frontmatter and the
+tag page's `<h1>`. Their rules are scoped `.prose .post-tags a` because the tag
+list sits inside `<article class="prose">`: at equal specificity `.prose a`
+wins on source order, which silently rendered tags as green underlined body
+links until it was caught.
 
 **Dark mode** is built in via `light-dark()` pairs on every colour token, with
 `color-scheme` on the root deciding. There is no visible theme toggle —
@@ -271,9 +390,13 @@ syntax, so a raw `<figure>` would force images into `public/` and break
 colocation. MDX components are ruled out by constraint 6.
 
 **Still open, deliberately.** Line length was pinned at 72ch during the scale
-tournament so it never got its own blind test. The green code fill was chosen
-in round one at the old scale and never compared head-to-head against a neutral
-fill. Both are one-line changes and are better judged against real posts.
+tournament so it never got its own blind test. The code fill was chosen in
+round one at the old scale and never compared head-to-head against a neutral
+fill — though note it now measures 1.05:1 against the paper, so it is barely a
+fill at all and the block is delimited mostly by its border. It cannot be
+darkened more than about 2 OKLCH lightness points without pushing the weakest
+syntax token (comments, 4.57:1) under the floor. Both are better judged against
+real posts.
 
 ## Current status
 
@@ -316,13 +439,16 @@ Regenerate the `.ico` after any change to the SVG. `sharp` is already a
 dependency and emits PNGs; the ICO container is a 6-byte header plus one 16-byte
 directory entry per image, then the PNG payloads.
 
-**The site has no posts.** That is intentional — The Field Note starts empty —
-so `astro build` warns that the blog collection is empty. Expected, not a
-problem.
+**The site has no published posts.** That is intentional — The Field Note
+starts empty. The collection holds one permanently-drafted reference post,
+`src/content/blog/example/`, which is excluded from production builds and the
+sitemap; see Content conventions.
 
-**The tagline is still blank.** `SITE_TAGLINE` in `src/consts.ts` is an empty
-string and everything that reads it degrades gracefully; the header simply
-renders no tagline. Filling it in is the only change needed. Do not invent one.
+**All site copy is the author's, written by hand.** Tagline, site description,
+about page, 404 page and the tag-page description template. The about page
+states this publicly, which is what constraint 13 exists to protect. The only
+agent-written strings still rendered are plain interface labels — "Skip to
+content", "Posts", "About", "Draft", "Updated" — and the `©` line.
 
 
 ## Roadmap
@@ -362,18 +488,43 @@ preserve. May be revisited later.
 
 ## Open questions — ask, do not decide
 
-**Tagline.** The line under "The Field Note" in the header, also the site
-description for search and social previews. Distinct from per-post
-`description`. `SITE_TAGLINE` in `src/consts.ts` is an empty string; the header
-renders nothing when it is blank, so it can be added or changed at any time
-without rework. Do not block on it, and do not invent one.
+**Tagline and site description — written, and decoupled.** `SITE_TAGLINE` is
+the visible line under the header; `SITE_DESCRIPTION` is the invisible meta
+description used for search results, link previews and the RSS channel. They
+were briefly the same string, which forced one to do both jobs — a tagline that
+works under a masthead makes a poor search snippet, and an empty tagline meant
+an empty description. They are independent now. Both are the author's words;
+**never draft either** (constraint 13). Blank is safe: `BaseHead` omits the
+description tags entirely rather than emitting empty ones.
+
+**NEXT SESSION — 80-character code blocks without a scrollbar.** Code blocks
+currently fit about 76 characters before scrolling horizontally, and 80 is the
+conventional line limit (PEP 8 says 79, Prettier 80; note Black defaults to
+88). Reaching 80 needs roughly 35px more inner width. Options already costed:
+let `pre` break out wider than the 72ch prose measure using negative inline
+margins — the standard approach and the only one that takes nothing from prose
+or code; trim `pre` padding from 1.5rem, which recovers ~19px and is not enough
+alone; drop `--size-code` from 16px to 15px, which works but shrinks code on a
+blog where code is the point; or widen the measure, which is already at the top
+of the readable range and is itself an untested value. **The author wants this
+solved next session.** Decide the target first — 80, or Black's 88 — because
+88 stops being a squeeze and becomes a question about how wide a code block
+should be relative to the page.
 
 **Two design values left untested** — line length (pinned at 72ch during the
 scale tournament, so never blind-tested on its own) and whether the code fill
-should stay green-tinted or go neutral. Both are one-line changes in
-`global.css`, and both are better judged against real posts than in another
-round of comparisons. Raise them once a few posts exist; do not change either
-unilaterally.
+should stay tinted or go neutral. Both are one-line changes in `global.css`,
+and both are better judged against real posts than in another round of
+comparisons. Both are entangled with the 80-character question above: the
+measure sets how wide code can be, and the fill cannot be judged until the
+block has a visible edge. Raise them once a few posts exist; do not change
+either unilaterally.
+
+**Warm paper.** Paper and ink now sit on the brand hue, which is invisible
+(ΔE < 0.01) but makes the neutral rule exceptionless. A visibly warm, printed
+paper is a legitimate alternative and would need roughly three times the
+chroma, around `#faf6ef` — a real change, unlike the one already made. Raise
+it against a real post; do not change unilaterally.
 
 **Styling approach — decided.** Plain CSS with custom properties, no Tailwind
 and no component library. One stylesheet, `src/styles/global.css`, driven

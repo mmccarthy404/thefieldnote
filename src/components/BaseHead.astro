@@ -51,16 +51,16 @@ const fullTitle = title === SITE_TITLE ? title : `${title} · ${SITE_TITLE}`;
 <link rel="canonical" href={canonical} />
 
 <title>{fullTitle}</title>
-<meta name="description" content={description} />
+{description && <meta name="description" content={description} />}
 
 <meta property="og:type" content={type} />
 <meta property="og:url" content={canonical} />
 <meta property="og:title" content={fullTitle} />
-<meta property="og:description" content={description} />
+{description && <meta property="og:description" content={description} />}
 <meta property="og:site_name" content={SITE_TITLE} />
 {image && <meta property="og:image" content={new URL(image.src, Astro.site)} />}
 
 <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
 <meta name="twitter:title" content={fullTitle} />
-<meta name="twitter:description" content={description} />
+{description && <meta name="twitter:description" content={description} />}
 {image && <meta name="twitter:image" content={new URL(image.src, Astro.site)} />}

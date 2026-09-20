@@ -46,21 +46,54 @@
 	   On the light paper it measures 3.38:1, below that floor. No light
 	   background fixes this: even pure white only reaches 3.56:1. So light-
 	   mode link text uses the same green darkened in OKLCH — identical hue
-	   (157.9deg), chroma at the maximum the display can render at that
+	   (157.9deg nominal; sRGB clipping lands it at 156.1deg), chroma at the
 	   lightness — landing at 4.53:1. One colour, rendered legibly.
 	   --------------------------------------------------------------------- */
 	--brand: #169b62;
-	--accent: light-dark(#00844d, #169b62);
+	--accent: light-dark(#007f4e, #169b62);
 
-	--bg: light-dark(#faf9f6, #15171a);
-	--fg: light-dark(#1f2124, #d6d4cf);
-	--muted: light-dark(#6a6d72, #8b8e93);
-	--rule: light-dark(#d8e2d8, #3a453d);
-	/* Light value is a shade lighter than the tint originally picked, so the
-	   weakest token in the syntax theme (comments, #66707b) clears 4.5:1
-	   against it — 4.57:1 rather than 4.48:1. */
-	--code-bg: light-dark(#f0f5f1, #0f1113);
-	--code-border: light-dark(#d8e2d8, #333d36);
+	/* Paper and ink sit on the brand hue too. They previously did not, and
+	   the mismatch was invisible but real: light mode was warm paper (hue
+	   91deg) with cool ink (258deg) while dark mode was cool paper with warm
+	   ink, so the whole site changed temperature when the OS preference
+	   flipped. Lightness was held, so contrast is unchanged. */
+	--bg: light-dark(#f7faf8, #151816);
+	--fg: light-dark(#1f2220, #d1d6d2);
+
+	/* --- tinted neutrals -------------------------------------------------
+	   Every neutral sits on the brand's hue, 157.9deg nominal, with
+	   chroma scaled down from it — roughly an eighth for marks that carry
+	   weight, a twentieth for fills. They read as greys, not as green, and
+	   the shared hue is what makes the palette feel like one system rather
+	   than a brand colour dropped onto arbitrary greys.
+
+	   Hue is uniform on purpose. Earlier values sat at 145-154deg because
+	   they were picked by eye; nothing depended on the difference.
+
+	   Chroma and hue are free to retune. Lightness is not: contrast follows
+	   lightness, and --muted is text. Rotating --muted from its original
+	   blue-grey (hue 261deg) to the brand angle moved contrast only 4.93:1
+	   to 4.89:1 in light and 5.46:1 to 5.50:1 in dark, because L was held.
+	   --------------------------------------------------------------------- */
+	--muted: light-dark(#657069, #86918a);
+	/* Light value darkened from #d6e2da. At that value the light hairline
+	   was 1.27:1 against the page while the dark one was 1.79:1 — the same
+	   element, twice the separation in dark mode, with table rules and the
+	   blockquote bar close to invisible on a light screen. */
+	--rule: light-dark(#c8d4cd, #39453e);
+
+	/* Deliberately its own token, not an alias of --rule by accident: a code
+	   block's edge and a page hairline are different jobs that happen to
+	   share a value today. Pointing it at --rule keeps them identical until
+	   someone decides otherwise, without fusing the two roles. */
+	--code-border: var(--rule);
+
+	/* A shade lighter than the tint first picked, so the weakest token in the
+	   syntax theme (comments, #66707b) clears 4.5:1 against it — 4.57:1. That
+	   leaves it only 1.7% of the lightness scale from --bg, so the fill barely
+	   reads and the block is delimited mostly by its border. Flagged in
+	   AGENTS.md as open; judge it against a real post. */
+	--code-bg: light-dark(#f0f5f2, #0f1110);
 }
 
 :root[data-theme='light'] {
@@ -99,8 +132,15 @@ main {
 	flex: 1;
 }
 
+/* The tint alone drops everything except body text under 4.5:1 while it is
+   selected — links to 3.52, --muted to 3.81, code comments to 3.72. That is
+   not fixable by choosing a different tint: the page is already near the top
+   of the luminance scale, so ANY visible highlight of ANY hue does it.
+   Pinning `color` forces selected runs to the body colour (11.92:1) instead.
+   Cost: selected code loses its syntax colours while selected. */
 ::selection {
 	background: color-mix(in srgb, var(--brand) 22%, transparent);
+	color: var(--fg);
 }
 
 :focus-visible {
@@ -203,12 +243,6 @@ main {
 	gap: 1rem;
 	flex-wrap: wrap;
 }
-.site-foot a {
-	color: var(--muted);
-}
-.site-foot a:hover {
-	color: var(--accent);
-}
 
 /* --- post header ---------------------------------------------------------- */
 
@@ -255,18 +289,31 @@ main {
 	padding-top: 1.4rem;
 	border-top: 1px solid var(--rule);
 }
-.post-tags a {
+/* Quiet at rest, colour on hover — the same treatment as .site-nav, .site-foot
+   and .post-list. Tags sit in their own block behind a hairline and each
+   carries a generated #, so position and sigil already announce them as links;
+   they do not need to identify themselves the way a link buried in running
+   prose does.
+
+   Scoped under .prose deliberately: the tag list sits inside the post's
+   <article class="prose">, so `.prose a` (green, underlined) matches these
+   links at identical specificity and wins on source order alone. Dropping
+   `.prose` here silently restores that. */
+.prose .post-tags a {
 	font-family: var(--font-head);
-	font-size: 0.75rem;
+	font-size: 0.8125rem;
 	color: var(--muted);
 	text-decoration: none;
-	border: 1px solid var(--rule);
-	border-radius: 999px;
-	padding: 0.2em 0.7em;
 }
-.post-tags a:hover {
-	color: var(--brand);
-	border-color: var(--brand);
+/* The hash carries the "this is a tag" signal that a bordered pill used to.
+   Generated rather than stored, so the tag string itself stays clean — the
+   tag page's <h1> renders the raw value and should not inherit a stray #. */
+.prose .post-tags a::before {
+	content: '#';
+}
+.prose .post-tags a:hover {
+	color: var(--accent);
+	text-decoration: none;
 }
 
 /* --- prose ---------------------------------------------------------------- */
@@ -510,10 +557,12 @@ main {
 	text-decoration: none;
 	color: inherit;
 }
+/* Colour only, no underline — matching .site-nav and .site-foot. Links whose
+   clickability is obvious from position get a single hover signal; links that
+   must identify themselves inside running text (.prose a, .post-tags a) carry
+   colour and an underline at rest instead. */
 .post-list a:hover .post-list-title {
 	color: var(--accent);
-	text-decoration: underline;
-	text-underline-offset: 0.18em;
 }
 .post-list-title {
 	font-family: var(--font-head);
@@ -537,7 +586,7 @@ main {
 	line-height: 1.55;
 }
 .post-list-draft {
-	color: var(--brand);
+	color: var(--accent);
 	font-weight: 600;
 }
 
