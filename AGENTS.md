@@ -80,10 +80,10 @@ firsthand. If a task seems to require breaking one, stop and ask.
 9. **Minimal JS.** Astro ships zero JS by default. Any island must be justified
    and use `client:visible`.
 10. **Single source of truth for site metadata.** Site title, tagline, author,
-    base URL, and the favicon emoji live in `src/consts.ts`. The header,
-    `<title>`, meta description, OpenGraph tags, RSS channel metadata, and the
-    `<link rel="icon">` data URI all read from it. Never hardcode these strings
-    into components.
+    and base URL live in `src/consts.ts`. The header, `<title>`, meta
+    description, OpenGraph tags, and RSS channel metadata all read from it.
+    Never hardcode these strings into components. The favicon is not among
+    them: it is an asset, `public/favicon.svg`, referenced once by `BaseHead`.
 11. **Never push to `main`.** A ruleset requires a pull request with both the
     `build-deploy` and `gitleaks` checks passing. Branch, open a PR, let CI go
     green, then squash-merge. The
