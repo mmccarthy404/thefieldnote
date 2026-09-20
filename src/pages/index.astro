@@ -21,7 +21,7 @@ const posts = await getPublishedPosts();
 			<h1 class="sr-only">{SITE_TITLE}</h1>
 			{
 				posts.length === 0 ? (
-					<p class="empty">No posts yet.</p>
+					<p class="empty">No posts.</p>
 				) : (
 					<ul class="post-list">
 						{posts.map((post) => (

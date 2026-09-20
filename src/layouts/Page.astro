@@ -1,0 +1,43 @@
+---
+// Layout for standalone Markdown pages (about, colophon, and anything else
+// that is prose rather than a post). Deliberately separate from BlogPost:
+// a page has no date, no draft badge and no hero, and folding those into one
+// layout would mean a pile of optional props that are always absent here.
+//
+// Pages live as .md in src/pages/ so their prose can be edited as Markdown
+// rather than as markup, matching how posts are written (constraint 6).
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+
+interface Props {
+	frontmatter: {
+		title: string;
+		/** Optional. Falls back to SITE_DESCRIPTION, and BaseHead omits the
+		 *  description tags entirely if that is blank too. */
+		description?: string;
+	};
+}
+
+const { title, description } = Astro.props.frontmatter;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={title} description={description} />
+	</head>
+	<body>
+		<a class="skip-link" href="#content">Skip to content</a>
+		<Header />
+		<main id="content">
+			<article class="prose">
+				<div class="post-head">
+					<h1>{title}</h1>
+				</div>
+				<slot />
+			</article>
+		</main>
+		<Footer />
+	</body>
+</html>

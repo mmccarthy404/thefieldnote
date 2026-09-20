@@ -1,0 +1,12 @@
+# Served by Cloudflare at the edge, not by Astro. This file is parsed by the
+# Workers static-assets runtime and is never served as an asset itself.
+#
+# /blog was the post index before the post list moved to the home page. A real
+# 301 replaces the <meta http-equiv="refresh"> page that used to live at
+# src/pages/blog/index.astro: a meta refresh makes the browser load a page and
+# bounce, and search engines treat it as a weaker signal than an HTTP redirect.
+#
+# Only the bare index redirects. /blog/<slug> must keep resolving, since that is
+# where posts live.
+/blog   /  301
+/blog/  /  301
