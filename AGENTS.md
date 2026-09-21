@@ -283,6 +283,90 @@ work in production.
 
 ---
 
+## Spacing and sizing — the system
+
+**Every spacing value is a whole number of 4px units**, declared in `rem` via
+`--u: 0.25rem` and the `--space-N` tokens. Before this, values landed at 7.6,
+11.4, 14.4, 17.6, 22.4, 25.6, 38 and 51 — a set of tuned numbers rather than a
+system.
+
+**It is quantization, not vertical rhythm.** A baseline grid is unreachable
+here: the line boxes are body 31.35, h1 46.25, h2 37.5, h3 30 and code 26.25,
+which share no common divisor. Any claim of rhythm from a 4px unit would be
+fiction. What the grid buys is a short, reviewable vocabulary. A modular scale
+derived from the 31.35px line box was considered and rejected — it reproduces
+exactly the 7.6/11.4/22.4 texture this replaced, with a nicer derivation.
+
+**The grid governs spacing only. Type sizes stay off-grid.** `--size-code` at
+15px and `--size-ui` at 14px are deliberate. Rounding `--size-code` to 16
+silently breaks the 80-character content rule: a block holds 81.4 characters at
+15px and 76.3 at 16px.
+
+### The heading ladder
+
+`--rhythm` 28 → h3-top 36 → h2-top 48, steps of 1.29 and 1.33. Bottom margins
+stay **tight at 16 and 12**.
+
+Do not raise the bottoms to Databricks' 20/16. Their absolute pixels do not
+port: their body leading is 1.40 against this site's 1.65, so identical
+declared margins read looser here. Measured optically, with half-leading
+included, tight bottoms give an above:below ratio of 1.96 at h2 and 1.87 at h3.
+Loosening them drops both and widens the gap between levels.
+
+**Move tops and bottoms in the same direction or not at all.** Lowering tops
+while raising bottoms compresses the contrast from both ends — that was a
+rejected proposal, not a hypothetical.
+
+Known trade, accepted: the pre-grid values (51/18, 38/12) had an optical spread
+of 0.006 between the two levels; the current values have 0.093. Every on-grid
+combination reaching near-zero spread requires `--h2-top` back at 60–68px,
+which undoes a reduction that was the point of the exercise.
+
+### Units — the rule that prevents a repeated bug
+
+Three separate bugs came from one mistake: a font-relative unit resolving
+against the *consuming* element rather than the intended basis.
+
+- **Spacing is `rem`.** `--rhythm` was `1.5em` and produced 28.50 on
+  paragraphs, 25.65 on tables and 22.50 on code blocks — three rhythms from one
+  token.
+- **`em` only where the element's own size is the intended basis** — inline
+  code padding, blockquote indent.
+- **`ch` is resolved once and never re-derived.** `--measure` is `51.3rem`
+  (72ch at 19px = 820.8px). As `72ch` it computed to 561.6px on `.site-foot`,
+  which carries both `.wrap` and a 13px font-size — a column 259px narrower
+  than every other on the site. In a *media condition* `ch` resolves against
+  the root font, so `sizes="(max-width: 72ch)"` was a ~691px breakpoint.
+
+### Small text
+
+Two tokens replace six ad-hoc sizes (11, 13, 13, 13, 14, 14.25). They are split
+by **case**, not by role: for uppercase, cap-height is the perceived size and
+x-height does not participate, so one token cannot serve both.
+
+- `--size-meta` 12px — uppercase and tracked: post meta, post-list dates.
+- `--size-ui` 14px — nav, footer, tagline, tags, **and captions**. A caption at
+  14px sits at 0.737 of the body x-height, within 2% of the 0.750 the blind
+  rounds settled on. 12px would drop it to 0.632 in already-muted text.
+
+### h4
+
+Redefined at body size, distinguished by weight and tracking. It was 18px
+against a 19px body — a heading smaller than its own text, the same inversion
+the scale tournament was re-run to fix. **Do not "delete h4" to solve this:**
+it is in the grouped `.prose h1, h2, h3, h4` selector, so removing its own rule
+leaves it 19px bold with zero margins, which is worse.
+
+### Code block padding
+
+20px block, 24px inline — deliberately asymmetric. JetBrains Mono's
+half-leading adds ~7.6px above the first cap that the horizontal axis does not
+have, so equal padding reads 25% looser vertically. **The inline value must not
+grow:** 24px leaves 81.4 characters against a content rule of 80, and the
+ceiling is 30.4px.
+
+---
+
 ## Astro 7 notes
 
 Astro 7 shipped 2026-06-22. Differences from Astro 5/6 docs you may have
@@ -530,6 +614,16 @@ prose column, and neither did we.
 
 If the type scale, the measure or the block padding ever change, recompute the
 capacity and `MAX_CHARS` together — they are one decision.
+
+**NEXT — there is no responsive system at all.** The stylesheet contains
+**zero width-based media queries**. The column needs 860.8px; below that
+everything goes fluid on 20px gutters with no adjustment to type or spacing. On
+a 375px phone a code block's content area is about 287px — roughly **32
+monospace characters** against an 80-character content rule — and a 48px h2
+ladder tuned for an 820px column is proportionally far heavier on a 335px one.
+For a code-heavy blog this is the largest ungoverned area in the file, larger
+than anything the spacing work addressed. Raise it before any further spacing
+tuning; the answers may change what the desktop values should be.
 
 **Two design values left untested** — line length (pinned at 72ch during the
 scale tournament, so never blind-tested on its own) and whether the code fill

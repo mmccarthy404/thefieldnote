@@ -21,8 +21,44 @@
 
 	--size-body: 1.1875rem; /* 19px */
 	--lh-body: 1.65;
-	--measure: 72ch;
-	--rhythm: 1.5em;
+	/* 72ch at 19px resolved once, because `ch` resolves against the *consuming*
+	   element's font-size. `.site-foot` carries both .wrap and a 13px size, so
+	   as `72ch` its column computed to 561.6px — 259px narrower than every
+	   other column on the site. Same trap as the old `--rhythm: 1.5em`. */
+	--measure: 51.3rem; /* 72ch at 19px = 820.8px */
+	/* rem, not em. As `1.5em` this resolved against each consuming element's
+	   own font-size, so one token silently produced three rhythms: 28.50px on
+	   paragraphs, 25.65px on tables (0.9em) and 22.50px on code blocks (15px).
+	   A code block ended up closer to the paragraph below it than the sentence
+	   above that introduced it. 1.75rem is 28px — within half a pixel of the
+	   blind-tested paragraph gap, so nothing intended moves. */
+	/* --- spacing -------------------------------------------------------
+	   Every spacing value is a whole number of 4px units, declared in rem.
+	   This is quantization, not vertical rhythm: no baseline grid is
+	   reachable here, because the line boxes (body 31.35, h2 37.5, h3 30,
+	   code 26.25) share no common divisor. What the grid buys is a finite,
+	   reviewable vocabulary instead of values like 7.6, 22.4 and 51.
+
+	   The grid governs SPACING ONLY. Type sizes stay off-grid — --size-code
+	   at 15px is load-bearing for the 80-character rule (at 16px a block
+	   holds 76 and every compliant line overflows). Do not round them. */
+	--u: 0.25rem; /* 4px */
+
+	--space-2: calc(var(--u) * 2); /* 8px  */
+	--space-3: calc(var(--u) * 3); /* 12px */
+	--space-4: calc(var(--u) * 4); /* 16px */
+	--space-5: calc(var(--u) * 5); /* 20px */
+	--space-6: calc(var(--u) * 6); /* 24px */
+	--space-7: calc(var(--u) * 7); /* 28px */
+	--space-8: calc(var(--u) * 8); /* 32px */
+	--space-9: calc(var(--u) * 9); /* 36px */
+	--space-10: calc(var(--u) * 10); /* 40px */
+	--space-12: calc(var(--u) * 12); /* 48px */
+	--space-14: calc(var(--u) * 14); /* 56px */
+	--space-16: calc(var(--u) * 16); /* 64px */
+	--space-20: calc(var(--u) * 20); /* 80px */
+
+	--rhythm: var(--space-7); /* 28px — the gap between blocks */
 
 	/* Major third (1.25) on the body size. */
 	--size-h1: 2.3125rem; /* 37px */
@@ -31,7 +67,21 @@
 	--lh-head: 1.25;
 	--track-head: 0;
 	--weight-head: 700;
-	--h2-top: 2.4em;
+	/* The ladder above headings: 28 -> 36 -> 48, steps of 1.29 and 1.33.
+	   Was 28 -> 45.6 -> 72 (steps ~1.6), which put h2 at 2.57x the paragraph
+	   gap against 1.67x at Databricks and 1.79x at Cloudflare.
+
+	   Below-heading margins stay TIGHT (16/12, not Databricks' 20/16). Their
+	   absolute pixels do not port: their body leading is 1.40 against this
+	   site's 1.65, so identical declared margins read looser here. Measured
+	   optically — half-leading included — the tight values give an above:below
+	   ratio of 1.93 at h2 and 1.94 at h3, agreeing to within 0.006. Loosening
+	   them to 20/16 drops those to 1.75 and 1.63 and breaks that agreement.
+	   Move tops and bottoms in the same direction or not at all. */
+	--h2-top: var(--space-12); /* 48px */
+	--h2-bottom: var(--space-4); /* 16px */
+	--h3-top: var(--space-9); /* 36px */
+	--h3-bottom: var(--space-3); /* 12px */
 
 	/* 15px, not 16. The blind round picked 16px against a 20px body — ratio
 	   0.80 — and the body later came down to 19px in the scale tournament
@@ -44,6 +94,17 @@
 	   732.8px, which is 81.4 monospace characters at 15px (76.3 at 16px).
 	   `npm run check` fails any code block over 80. */
 	--size-code: 0.9375rem; /* 15px */
+
+	/* Small text, two values instead of six (11, 13, 13, 13, 14, 14.25).
+	   They are split by CASE, not by role: for uppercase, cap-height is the
+	   perceived size and x-height does not participate, so one token cannot
+	   serve both. At 12px uppercase the cap-height is 8.4px; at 14px
+	   lowercase the x-height is 7.2px — near enough to read as one size.
+	   Captions belong with --size-ui: at 14px a caption sits at 0.737 of the
+	   body x-height, within 2% of the 0.750 the blind rounds settled on.
+	   12px there would drop it to 0.632 in already-muted text. */
+	--size-meta: 0.75rem; /* 12px — uppercase, tracked */
+	--size-ui: 0.875rem; /* 14px — nav, footer, tags, captions */
 	--lh-code: 1.75;
 	--radius: 8px;
 
@@ -189,7 +250,7 @@ main {
 .wrap {
 	max-width: var(--measure);
 	margin-inline: auto;
-	padding-inline: 1.25rem;
+	padding-inline: var(--space-5);
 	width: 100%;
 }
 
@@ -204,7 +265,7 @@ main {
 	justify-content: space-between;
 	gap: 1rem;
 	flex-wrap: wrap;
-	padding-block: 1.1rem;
+	padding-block: var(--space-5);
 }
 .site-title {
 	font-family: var(--font-head);
@@ -216,16 +277,16 @@ main {
 }
 .site-tagline {
 	display: block;
-	font-size: 0.8125rem;
+	font-size: var(--size-ui);
 	font-weight: 400;
 	color: var(--muted);
-	margin-top: 0.2rem;
+	margin-top: var(--u);
 }
 .site-nav {
 	display: flex;
-	gap: 1.1rem;
+	gap: var(--space-5);
 	font-family: var(--font-head);
-	font-size: 0.875rem;
+	font-size: var(--size-ui);
 }
 .site-nav a {
 	color: var(--muted);
@@ -243,10 +304,10 @@ main {
 
 .site-foot {
 	border-top: 1px solid var(--rule);
-	margin-top: 5rem;
-	padding-block: 1.6rem 2.4rem;
+	margin-top: var(--space-20);
+	padding-block: var(--space-6) var(--space-8);
 	font-family: var(--font-head);
-	font-size: 0.8125rem;
+	font-size: var(--size-ui);
 	color: var(--muted);
 	display: flex;
 	justify-content: space-between;
@@ -257,18 +318,18 @@ main {
 /* --- post header ---------------------------------------------------------- */
 
 .post-head {
-	padding-top: 3.5rem;
-	margin-bottom: 2.5rem;
+	padding-top: var(--space-14);
+	margin-bottom: var(--space-10);
 }
 .post-meta {
 	font-family: var(--font-head);
-	font-size: 0.6875rem;
+	font-size: var(--size-meta);
 	text-transform: uppercase;
 	letter-spacing: 0.09em;
 	color: var(--muted);
-	margin: 0 0 0.9rem;
+	margin: 0 0 var(--space-4);
 	display: flex;
-	gap: 0.6rem;
+	gap: var(--space-2);
 	flex-wrap: wrap;
 	align-items: center;
 }
@@ -281,8 +342,10 @@ main {
 	margin: 0.6em 0 0;
 	line-height: 1.5;
 }
-.post-hero {
-	margin: 1.8rem 0 0;
+/* Scoped to outrank `.prose figure` (0,1,1), which is declared later and was
+   overriding this to 2em top and bottom. */
+.prose .post-hero {
+	margin: var(--rhythm) 0 0;
 }
 .post-hero img {
 	width: 100%;
@@ -293,10 +356,10 @@ main {
 }
 .post-tags {
 	display: flex;
-	gap: 0.45rem;
+	gap: var(--space-2);
 	flex-wrap: wrap;
-	margin-top: 1.6rem;
-	padding-top: 1.4rem;
+	margin-top: var(--space-6);
+	padding-top: var(--space-6);
 	border-top: 1px solid var(--rule);
 }
 /* Quiet at rest, colour on hover — the same treatment as .site-nav, .site-foot
@@ -311,7 +374,7 @@ main {
    `.prose` here silently restores that. */
 .prose .post-tags a {
 	font-family: var(--font-head);
-	font-size: 0.8125rem;
+	font-size: var(--size-ui);
 	color: var(--muted);
 	text-decoration: none;
 }
@@ -331,12 +394,26 @@ main {
 .prose {
 	max-width: var(--measure);
 	margin-inline: auto;
-	padding: 0 1.25rem 4rem;
+	padding: 0 var(--space-5) var(--space-16);
 }
 
 .prose h1,
 .prose h2,
 .prose h3,
+/* A heading followed by a bordered block gets a little more room. Against a
+   paragraph the tight 16/12 is softened by the cap-height gap; against a solid
+   border there is nothing between the two edges. */
+.prose :is(h2, h3, h4) + :is(pre, blockquote, table) {
+	margin-top: var(--space-5);
+}
+
+/* A subsection heading directly under its parent sits closer than a paragraph
+   would. Without this the two margins collapse to the larger — 36px — so an h3
+   introducing its own h2's section looked further away than body text. */
+.prose h2 + h3 {
+	margin-top: var(--space-5);
+}
+
 .prose h4 {
 	font-family: var(--font-head);
 	font-weight: var(--weight-head);
@@ -348,22 +425,28 @@ main {
 }
 .prose h1 {
 	font-size: var(--size-h1);
-	margin-bottom: 0.4em;
+	margin-bottom: var(--space-4);
 }
 .prose h2 {
 	font-size: var(--size-h2);
 	margin-top: var(--h2-top);
-	margin-bottom: 0.6em;
+	margin-bottom: var(--h2-bottom);
 }
 .prose h3 {
 	font-size: var(--size-h3);
-	margin-top: 1.9em;
-	margin-bottom: 0.5em;
+	margin-top: var(--h3-top);
+	margin-bottom: var(--h3-bottom);
 }
 .prose h4 {
-	font-size: 1.125rem;
-	margin-top: 1.7em;
-	margin-bottom: 0.4em;
+	/* Body size, distinguished by weight and tracking rather than size. It was
+	   18px against a 19px body — a heading smaller than its own text, the same
+	   inversion the scale tournament was re-run to fix. Deleting the rule is
+	   not an option: h4 is in the grouped selector above, so it would fall
+	   back to 19px bold with zero margins. */
+	font-size: var(--size-body);
+	letter-spacing: 0.01em;
+	margin-top: var(--space-8);
+	margin-bottom: var(--space-3);
 }
 
 /* The first heading's top margin would otherwise collapse with the header's
@@ -378,11 +461,20 @@ main {
 	margin: 0 0 var(--rhythm);
 }
 .prose li {
-	margin-bottom: 0.4em;
+	margin-bottom: var(--space-2);
 }
 .prose li > ul,
 .prose li > ol {
-	margin: 0.4em 0 0;
+	margin: var(--space-2) 0 0;
+}
+/* A "loose" list — blank lines between items in the Markdown — wraps each item
+   in a <p>, which would otherwise take the full 28px block rhythm and put 3.5x
+   more space between items than a tight list. */
+.prose li > p {
+	margin-bottom: 0;
+}
+.prose li > p + p {
+	margin-top: var(--space-2);
 }
 
 .prose a {
@@ -402,11 +494,11 @@ main {
 .prose hr {
 	border: 0;
 	border-top: 1px solid var(--rule);
-	margin: 3em 0;
+	margin: var(--space-14) 0;
 }
 
 .prose blockquote {
-	margin: var(--rhythm) 0;
+	margin: 0 0 var(--rhythm);
 	padding: 0.1em 0 0.1em 1.15em;
 	border-left: 3px solid var(--rule);
 	color: var(--muted);
@@ -434,8 +526,18 @@ main {
 	background: var(--code-bg);
 	border: 1px solid var(--code-border);
 	border-radius: var(--radius);
-	padding: 1.4rem 1.5rem;
-	margin: var(--rhythm) 0;
+	/* 20 block / 24 inline, not symmetric. JetBrains Mono's half-leading adds
+	   ~7.6px above the first cap that the horizontal axis does not have, so
+	   equal padding reads 25% looser vertically. This lands at 1.09.
+	   The inline value must not grow: 24px leaves 81.4 characters and the
+	   content rule is 80. The ceiling is 30.4px. */
+	padding: var(--space-5) var(--space-6);
+	/* Rhythm points downward only, as it does on p and lists. The space above
+	   is then set by whatever precedes, via margin collapsing — a paragraph
+	   gives --rhythm, a heading gives its own tighter bottom margin. With a
+	   top margin here instead, a heading's 18px lost the collapse and a code
+	   block sat further from its own heading than a paragraph would. */
+	margin: 0 0 var(--rhythm);
 	overflow-x: auto;
 	tab-size: 2;
 }
@@ -484,15 +586,24 @@ main {
 }
 
 /* Markdown image syntax lands as <p><img></p>. */
+/* 32px above: more than a paragraph gap, less than an h3's 36. An image is
+   subordinate within a section; it should not open more space than a
+   subsection heading does. */
 .prose p:has(> img) {
-	margin: 2em 0 0.6em;
+	margin: var(--space-8) 0 var(--rhythm);
+}
+/* The tuck belongs to the captioned case only. Applied unconditionally it
+   left an uncaptioned image 11.4px from the paragraph below and 38px from the
+   one above, so it read as belonging to the text after it. */
+.prose p:has(> img):has(+ p:has(> em:only-child)) {
+	margin-bottom: var(--space-3);
 }
 
 /* Captions without a rehype plugin: an italic-only paragraph directly after an
    image paragraph. Plain Markdown, images stay colocated with the post. */
 .prose p:has(> img) + p:has(> em:only-child) {
 	margin-top: 0;
-	font-size: 0.75em;
+	font-size: var(--size-ui);
 	font-style: normal;
 	line-height: 1.5;
 	color: var(--muted);
@@ -507,7 +618,7 @@ main {
 }
 .prose figcaption {
 	margin-top: 0.6em;
-	font-size: 0.75em;
+	font-size: var(--size-ui);
 	line-height: 1.5;
 	color: var(--muted);
 	text-align: center;
@@ -523,7 +634,7 @@ main {
 	max-width: 100%;
 	overflow-x: auto;
 	border-collapse: collapse;
-	margin: var(--rhythm) 0;
+	margin: 0 0 var(--rhythm);
 	font-size: 0.9em;
 	line-height: 1.45;
 }
@@ -563,7 +674,7 @@ main {
 }
 .post-list a {
 	display: block;
-	padding: 1.6rem 0;
+	padding: var(--space-6) 0;
 	text-decoration: none;
 	color: inherit;
 }
@@ -579,11 +690,11 @@ main {
 	font-weight: var(--weight-head);
 	font-size: var(--size-h3);
 	line-height: 1.3;
-	margin: 0 0 0.35rem;
+	margin: 0 0 var(--u);
 }
 .post-list-date {
 	font-family: var(--font-head);
-	font-size: 0.6875rem;
+	font-size: var(--size-meta);
 	text-transform: uppercase;
 	letter-spacing: 0.09em;
 	color: var(--muted);
@@ -609,7 +720,7 @@ main {
 	font-weight: var(--weight-head);
 	font-size: var(--size-h1);
 	line-height: var(--lh-head);
-	margin: 0 0 0.4rem;
+	margin: 0 0 var(--space-2);
 }
 .page-head p {
 	color: var(--muted);
