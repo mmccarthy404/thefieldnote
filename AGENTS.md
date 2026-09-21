@@ -91,14 +91,10 @@ firsthand. If a task seems to require breaking one, stop and ask.
     not as the normal path, and never for an agent. CI cannot gate a direct
     push — a push is what triggers CI — so the PR is the only thing standing
     between a broken build and the live site.
-12. **Edit `AGENTS.md`, never `CLAUDE.md`.** `AGENTS.md` is the real file and
-    `CLAUDE.md` is a symlink to it, matching the Astro scaffold's original
-    arrangement: the vendor-neutral name holds the content, the tool-specific
-    alias points at it. An atomic save — write a temp file, then rename over
-    the path — replaces a symlink rather than following it, so writing to
-    `CLAUDE.md` breaks the link and leaves two files that silently drift. This
-    has already happened once, in the opposite direction, and surfaced only as
-    a cryptic `typechange` in `git status`.
+12. **Use `AGENTS.md` as the only project instruction file.** Claude Code
+    2.1.277 and newer can load it natively; enable AGENTS.md support under
+    "Project instructions" in `/config`. Edit this file directly and do not
+    create tool-specific copies or symlinks.
 13. **No LLM-written site content.** The about page states that everything on
     this site is written by hand, without LLMs. That claim is load-bearing and
     a reader can check it, so it constrains the agent as much as the author.
@@ -182,8 +178,8 @@ than a copy kept here. The decisions it encodes:
   by a human reading the image diff in a PR. Part of why PRs are required.
 
 `.gitignore` must cover `node_modules/`, `dist/`, `.astro/`, `.wrangler/`, and
-Claude Code's local state. `wrangler.jsonc`, `AGENTS.md`, and `CLAUDE.md` are
-committed — never ignore those. For Claude Code:
+Claude Code's local state. `wrangler.jsonc` and `AGENTS.md` are committed —
+never ignore those. For Claude Code:
 
 ```
 .claude/*

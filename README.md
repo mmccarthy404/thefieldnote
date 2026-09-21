@@ -96,5 +96,6 @@ so it clears WCAG AA; dark mode via `light-dark()` on every colour token.
 ## Repo conventions
 
 `AGENTS.md` is the working brief for both humans and coding agents — stack
-decisions, hard constraints, and the reasoning behind them. `CLAUDE.md` is a
-symlink to it; edit `AGENTS.md`, never the symlink.
+decisions, hard constraints, and the reasoning behind them. It is the only
+project instruction file. Claude Code 2.1.277+ can read it natively; enable
+AGENTS.md support under "Project instructions" in `/config`.
