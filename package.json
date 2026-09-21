@@ -9,6 +9,7 @@
     "dev": "astro dev",
     "check": "astro check && node scripts/check-code-width.mjs",
     "build": "astro build",
+    "check:build": "node scripts/check-build.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "deploy": "npm run build && wrangler deploy"

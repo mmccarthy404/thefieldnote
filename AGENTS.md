@@ -17,13 +17,15 @@ infrastructure, and things that break in production.
 | Post format | Markdown (`.md`) |
 | Hosting | Cloudflare, assets-only Worker |
 | CI/CD | GitHub Actions → `wrangler-action@v4` |
-| Styling | Undecided — see Open questions |
+| Styling | Plain CSS with custom properties |
 
 ## Commands
 
 ```bash
 npm run dev       # local dev server, localhost:4321
 npm run build     # static build to dist/
+npm run check     # Astro diagnostics and the 80-character code limit
+npm run check:build # validate local targets and draft exclusion in dist/
 npm run preview   # serve the built output locally
 ```
 
@@ -148,7 +150,11 @@ too — ask before doing so, don't decide unilaterally.
 `.github/workflows/deploy.yml` is the source of truth — read the file rather
 than a copy kept here. The decisions it encodes:
 
-- `npm ci` → `npm run check` → `npm run build`. Never `npm install` in CI: it
+- `npm ci` → `npm run check` → `npm run build` → `npm run check:build`.
+  The final check validates local link/asset targets and uses the permanently
+  drafted example as a regression check for routes, RSS, and sitemap exclusion.
+  External links and fragment targets are not checked.
+  Never `npm install` in CI: it
   resolves new versions silently and makes builds unreproducible.
 - PRs build; only `main` deploys, via the `if: github.ref` guard on the deploy
   step rather than a second workflow.
@@ -203,7 +209,7 @@ title:         # string, required
 description:   # string, required — used for OG and RSS
 pubDate:       # date, required
 updatedDate:   # date, optional
-tags:          # string[], default []
+tags:          # string[], default [] — lowercase letters/numbers, single hyphens
 draft:         # boolean, default false
 heroImage:     # optional
 canonicalUrl:  # optional — for posts cross-posted elsewhere
@@ -211,6 +217,9 @@ canonicalUrl:  # optional — for posts cross-posted elsewhere
 
 Do **not** add an issue or series number field. Numbered posts were considered
 and rejected.
+
+Tags are validated as URL-safe slugs (for example, `unity-catalog`). Publication
+dates render in UTC so date-only frontmatter agrees between local and CI builds.
 
 **Start from `src/content/blog/example/`.** It is a permanently-drafted
 reference post carrying every frontmatter field, all the Markdown this site
@@ -486,7 +495,8 @@ blog template, adapter removed, wizard residue cleaned up, assets-only Worker
 deployed. The loop is proven end to end: PR → `build-deploy` + `gitleaks` →
 squash-merge → deploy → live at the workers.dev URL.
 
-- Ruleset on `main` requires a PR with both checks green (constraint 11).
+- Ruleset on `main` requires a PR with both checks green and the branch up to
+  date with `main` (constraint 11).
 - Cloudflare token is scoped to `Workers Scripts:Edit` and
   `Account Settings:Read` only. It deliberately cannot create Pages projects,
   KV namespaces, Workers Builds, or observability — constraints 1, 2 and 3 are
@@ -500,6 +510,35 @@ site. Shipped: the collection schema with `draft`/`tags`/`canonicalUrl`, draft
 filtering that keeps drafts visible in `astro dev` and out of production
 builds, the post list as the home page, per-tag pages, an about page, a custom
 404, RSS, sitemap, `robots.txt`, and per-page canonical and OpenGraph tags.
+
+**Pre-publication review fixes, September 2026.** Preserve these corrections
+when editing the styles or build pipeline:
+
+- The common `.prose h1, h2, h3, h4` selector must remain one group. The
+  heading-to-bordered-block selector is a separate margin-only rule.
+- Post metadata and description selectors are scoped under `.prose` so the
+  general paragraph margin does not override their existing margins.
+- Only syntax-token spans get a transparent background. Applying transparency
+  to `.astro-code` itself overrides the intended `--code-bg` on `pre`.
+- `image.layout: 'constrained'` generates responsive variants for Markdown
+  images. Existing CSS controls their displayed size. Hero images use priority
+  loading and a `sizes` attribute accounting for the column gutters; their
+  empty alt text means they are decorative, not the sole source of information.
+- Prose uses `overflow-wrap: anywhere` to contain long URLs. Code blocks keep
+  `white-space: pre` and horizontal scrolling; no typography or spacing token
+  was changed.
+- Tags are validated as URL-safe slugs, publication dates render in UTC, and
+  `.env.*` is ignored except for a shareable `.env.example`.
+- `SITE_URL` drives Astro config and generated static `robots.txt`. The planned
+  domain remains intentional before cutover; see Domain cutover below.
+- CI checks generated local link/asset targets and reference-draft exclusion
+  after building. This is an offline check of `href`/`src` targets and exact
+  redirects, not an external-link, fragment, or complete HTML audit.
+
+Validation covered Astro diagnostics, a production build, failing build-check
+fixtures, and an isolated published copy of the reference post. The latter
+verified generated image files, tag routes, dates in a New York build timezone,
+and rejection of an invalid tag. No agent-written site prose was introduced.
 
 **The favicon is Lucide's `clipboard-pen`**, recoloured to `#169B62` and
 committed as `public/favicon.svg`, with `public/favicon.ico` (16/32/48px)
@@ -545,7 +584,9 @@ Remaining:
    `heroImage`, so this slots in without restructuring.
 2. **Search** — Pagefind. Build-time index, no server. Not urgent at low post
    counts, painful to retrofit later.
-3. **Repo hygiene** — link checker. `astro check` already runs in CI. Optionally
+3. **Repo hygiene** — local link/asset checking and reference-draft exclusion
+   now run via `npm run check:build` after the CI build. External links and
+   fragments remain unchecked. `astro check` also runs in CI. Optionally
    per-PR preview deploys via `wrangler versions upload` (deliberately
    deferred).
 4. **Analytics** — Cloudflare Web Analytics. Free, cookieless, one snippet.
@@ -611,15 +652,24 @@ prose column, and neither did we.
 If the type scale, the measure or the block padding ever change, recompute the
 capacity and `MAX_CHARS` together — they are one decision.
 
-**NEXT — there is no responsive system at all.** The stylesheet contains
-**zero width-based media queries**. The column needs 860.8px; below that
-everything goes fluid on 20px gutters with no adjustment to type or spacing. On
-a 375px phone a code block's content area is about 287px — roughly **32
-monospace characters** against an 80-character content rule — and a 48px h2
-ladder tuned for an 820px column is proportionally far heavier on a 335px one.
-For a code-heavy blog this is the largest ungoverned area in the file, larger
-than anything the spacing work addressed. Raise it before any further spacing
-tuning; the answers may change what the desktop values should be.
+**Mobile — validated, preserve the tested scale.** Chromium checks of the
+reference post at 320px, 375px, and 1280px passed in light and dark modes:
+the page stays within the viewport, images resize, long URLs wrap, and code
+scrolls inside its block. Keyboard focus reaches the skip link. This is not
+a complete accessibility audit or a mobile reading-preference study.
+
+The layout is responsive through fluid widths, wrapping navigation, responsive
+images, and contained scrolling; width-based media queries are not required
+just to call it responsive. Keep **body 19 / h3 24 / h2 30 / h1 37** across
+screen sizes. The author reaffirmed the blind 8–0 result over vendor imitation.
+Keep the existing spacing tokens too. The **80-character rule limits authored
+code**, not the number of characters visible at once on a phone; horizontal
+scrolling on mobile is explicitly accepted. Do not shrink code or wrap its
+lines to fit 80 characters onto a narrow screen.
+
+**Next: write posts.** Preview real posts on desktop and phones, especially
+long titles, screenshots, and wide tables. Revisit layout only for a concrete
+reading problem; do not start another speculative scale or spacing redesign.
 
 **Two design values left untested** — line length (pinned at 72ch during the
 scale tournament, so never blind-tested on its own) and whether the code fill
@@ -645,6 +695,11 @@ constraining it, which was the intent.
 
 
 ## Domain cutover — author-driven, do not attempt
+
+`SITE_URL` in `src/consts.ts` deliberately remains `https://thefieldnote.dev`
+before cutover, at the author's request. Astro config and generated `robots.txt`
+read it; canonical URLs, feed discovery, and sitemap URLs therefore point to
+the planned domain even while it still serves Squarespace.
 
 The domain is parked at Squarespace with no email and no DNS records in use, so
 there is nothing to preserve and the usual record-migration risk doesn't apply.

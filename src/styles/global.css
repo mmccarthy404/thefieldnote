@@ -321,7 +321,7 @@ main {
 	padding-top: var(--space-14);
 	margin-bottom: var(--space-10);
 }
-.post-meta {
+.prose .post-meta {
 	font-family: var(--font-head);
 	font-size: var(--size-meta);
 	text-transform: uppercase;
@@ -336,7 +336,7 @@ main {
 .post-meta .dot {
 	opacity: 0.45;
 }
-.post-dek {
+.prose .post-dek {
 	font-size: 1.05em;
 	color: var(--muted);
 	margin: 0.6em 0 0;
@@ -395,11 +395,9 @@ main {
 	max-width: var(--measure);
 	margin-inline: auto;
 	padding: 0 var(--space-5) var(--space-16);
+	overflow-wrap: anywhere;
 }
 
-.prose h1,
-.prose h2,
-.prose h3,
 /* A heading followed by a bordered block gets a little more room. Against a
    paragraph the tight 16/12 is softened by the cap-height gap; against a solid
    border there is nothing between the two edges. */
@@ -414,6 +412,9 @@ main {
 	margin-top: var(--space-5);
 }
 
+.prose h1,
+.prose h2,
+.prose h3,
 .prose h4 {
 	font-family: var(--font-head);
 	font-weight: var(--weight-head);
@@ -554,10 +555,12 @@ main {
 .prose .astro-code,
 .prose .astro-code span {
 	color: light-dark(var(--shiki-light), var(--shiki-dark));
-	background-color: transparent;
 	font-style: var(--shiki-light-font-style);
 	font-weight: var(--shiki-light-font-weight);
 	text-decoration: var(--shiki-light-text-decoration);
+}
+.prose .astro-code span {
+	background-color: transparent;
 }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) .prose .astro-code,

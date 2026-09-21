@@ -13,7 +13,8 @@ const blog = defineCollection({
 			description: z.string(),
 			pubDate: z.coerce.date(),
 			updatedDate: z.coerce.date().optional(),
-			tags: z.array(z.string()).default([]),
+			tags: z.array(z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+				'Tags must use lowercase letters, numbers, and single hyphens.')).default([]),
 			draft: z.boolean().default(false),
 			heroImage: image().optional(),
 			/** For posts cross-posted elsewhere. */
