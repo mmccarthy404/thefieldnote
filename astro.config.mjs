@@ -3,11 +3,15 @@
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { defineConfig, fontProviders } from 'astro/config';
+import { SITE_URL } from './src/consts.ts';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://thefieldnote.dev',
+  site: SITE_URL,
   integrations: [mdx(), sitemap()],
+
+  // Generate responsive variants for Markdown images. global.css handles sizing.
+  image: { layout: 'constrained' },
 
   markdown: {
     shikiConfig: {

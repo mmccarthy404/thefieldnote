@@ -55,7 +55,7 @@ const { title, description, pubDate, updatedDate, heroImage, tags, draft, canoni
 					{
 						heroImage && (
 							<figure class="post-hero">
-								<Image src={heroImage} alt="" widths={[640, 960, 1280]} sizes="(max-width: 51.3rem) 100vw, 51.3rem" />
+								<Image src={heroImage} alt="" priority widths={[640, 960, 1280]} sizes="(max-width: 51.3rem) calc(100vw - 2.5rem), 48.8rem" />
 							</figure>
 						)
 					}

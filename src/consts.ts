@@ -4,6 +4,9 @@
 
 export const SITE_TITLE = 'The Field Note';
 
+// Deliberately keep the planned domain canonical before the author-led cutover.
+export const SITE_URL = 'https://thefieldnote.dev';
+
 /**
  * The line under the title in the header. Optional, and deliberately empty:
  * the header renders nothing when it is blank, so one can be added whenever
