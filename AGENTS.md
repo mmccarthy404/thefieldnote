@@ -5,8 +5,8 @@ observations from day-to-day work: Databricks, data infrastructure, ML
 infrastructure, and things that break in production.
 
 - **Publication name:** The Field Note
-- **Domain:** thefieldnote.dev (not yet live — see Domain cutover)
-- **Deployed at:** https://thefieldnote.mmccarthy404.workers.dev
+- **Domain:** thefieldnote.dev (live since 2026-09-26 — see Domain)
+- **Deployed at:** https://thefieldnote.dev
 
 ## Stack
 
@@ -493,7 +493,7 @@ real posts.
 **Infrastructure is done and verified.** Astro scaffolded from the official
 blog template, adapter removed, wizard residue cleaned up, assets-only Worker
 deployed. The loop is proven end to end: PR → `build-deploy` + `gitleaks` →
-squash-merge → deploy → live at the workers.dev URL.
+squash-merge → deploy → live at https://thefieldnote.dev.
 
 - Ruleset on `main` requires a PR with both checks green and the branch up to
   date with `main` (constraint 11).
@@ -529,8 +529,16 @@ when editing the styles or build pipeline:
   was changed.
 - Tags are validated as URL-safe slugs, publication dates render in UTC, and
   `.env.*` is ignored except for a shareable `.env.example`.
-- `SITE_URL` drives Astro config and generated static `robots.txt`. The planned
-  domain remains intentional before cutover; see Domain cutover below.
+- `SITE_URL` drives Astro config and generated static `robots.txt`. Naming the
+  planned domain before cutover meant no code change was needed when DNS
+  flipped; see Domain below.
+- `robots.txt` is generated from `SITE_URL` and Cloudflare must not co-own it.
+  Bot Preference Sync is deliberately **off**: it prepends dashboard-configured
+  directives to the served file, so the bytes crawlers see would stop matching
+  `dist/robots.txt` and could change without a deploy. Nothing is blocked
+  today: Googlebot, Bingbot, GPTBot, ClaudeBot, CCBot, ChatGPT-User and
+  PerplexityBot all verified at 200. Enable the sync only alongside real
+  Cloudflare-side blocking, since `robots.txt` alone is advisory.
 - CI checks generated local link/asset targets and reference-draft exclusion
   after building. This is an offline check of `href`/`src` targets and exact
   redirects, not an external-link, fragment, or complete HTML audit.
@@ -694,29 +702,60 @@ constraining it, which was the intent.
 ---
 
 
-## Domain cutover — author-driven, do not attempt
+## Domain — live since 2026-09-26
 
-`SITE_URL` in `src/consts.ts` deliberately remains `https://thefieldnote.dev`
-before cutover, at the author's request. Astro config and generated `robots.txt`
-read it; canonical URLs, feed discovery, and sitemap URLs therefore point to
-the planned domain even while it still serves Squarespace.
+`thefieldnote.dev` serves the site from Cloudflare. `SITE_URL` in
+`src/consts.ts` needed no change at cutover: it had named the planned domain all
+along, so canonical URLs, OpenGraph tags, feed discovery, the sitemap and the
+generated `robots.txt` were already correct the moment DNS flipped. That is the
+whole reason it was left pointing at a domain that still served Squarespace.
 
-The domain is parked at Squarespace with no email and no DNS records in use, so
-there is nothing to preserve and the usual record-migration risk doesn't apply.
+The shape of the setup, so it is not rediscovered:
 
-1. Confirm the Squarespace DNS panel is empty apart from defaults; disable
-   DNSSEC if enabled.
-2. Add `thefieldnote.dev` as a zone in Cloudflare.
-3. Point Squarespace nameservers at Cloudflare's two.
-4. Worker → Settings → Domains & Routes → add the apex as a custom domain. TLS
-   auto-provisions.
-5. Redirect Rule: `www` → apex. Apex is canonical.
-6. Registrar transfers to Porkbun after 2026-10-14. Nameservers survive the
-   transfer. Do not edit DNS while a transfer is pending.
+- **Registrar:** Squarespace until 2026-10-14, then Porkbun. Registration only —
+  DNS does not move with it.
+- **DNS:** Cloudflare zone `thefieldnote.dev`, nameservers `kami` and
+  `nitin.ns.cloudflare.com`. The records exist nowhere else.
+- **Apex:** bound to the `thefieldnote` Worker as a **custom domain**, not a
+  route. A route would need a hand-managed proxied record and falls through to a
+  nonexistent origin on a miss, giving 522s instead of clean 404s. Cloudflare
+  owns the apex record and the certificate; the zone shows it as a
+  non-editable record of type `Worker`.
+- **`www`:** a proxied `AAAA` at `100::` so requests reach the edge at all, plus
+  a Redirect Rule that 301s to the apex preserving path and query. The Worker is
+  never invoked for `www`. Apex is canonical. `www` cannot be a second custom
+  domain instead: that serves the site rather than redirecting it, and an
+  assets-only Worker has no code to redirect from.
+- **Mail:** three TXT records carried over from Squarespace and are worth
+  keeping — `v=spf1 -all`, a null DKIM (`v=DKIM1; p=`), and DMARC
+  `p=reject; sp=reject` with strict alignment. No MX, no mail sent, so anyone
+  spoofing the domain fails all three checks.
+- **Both `workers.dev` hostnames are disabled.** Production duplicated the site
+  at a second address; the preview wildcard was publicly serving a copy of every
+  deployed version, including one that still rendered Astro's sample template.
+  Disabling them does not delete versions, which remain available for rollback.
+
+**DNSSEC is off deliberately until after the registrar transfer.** It was
+enabled at Squarespace, and turning it off is what takes a domain down: the zone
+is unsigned the moment the switch flips while the registry keeps publishing the
+DS record, so every validating resolver returns SERVFAIL until the DS clears.
+That outage window opens at the click, not at the nameserver change. The order
+is therefore: remove DNSSEC, confirm the DS is actually gone from the registry,
+and only then touch nameservers. In practice Squarespace cleared it in minutes
+against a stated ceiling of 48 hours.
+
+Remaining, author-driven:
+
+1. After **2026-10-14**, unlock `clientTransferProhibited` at Squarespace and
+   transfer the registration to Porkbun. The 60-day ICANN lock dates from
+   registration on 2026-08-15. Do not edit registrant contact details before
+   then — a registrant change can start a fresh 60-day lock.
+2. **Confirm the nameservers are still Cloudflare's once the transfer lands.**
+   The DNS records live only in Cloudflare, so nameservers reset to Porkbun's
+   would take the site down immediately.
+3. Then re-enable DNSSEC, at Cloudflare, adding the DS record it issues at
+   Porkbun. Not while a transfer is pending.
 
 Attaching an apex domain requires the zone to live on the same Cloudflare
 account; there is no supported ALIAS/ANAME-from-elsewhere path. This was
 investigated and ruled out.
-
-Timing is the author's call, likely once the site no longer looks like the
-sample template.
